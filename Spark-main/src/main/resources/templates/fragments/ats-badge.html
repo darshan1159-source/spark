@@ -1,0 +1,47 @@
+<!--
+  ATS badge + checklist fragment with partial credit support.
+  Referenced as: "fragments/ats-badge :: atsBadge"
+-->
+<div th:fragment="atsBadge" id="ats-badge" hx-swap-oob="true">
+    <div class="flex items-center gap-4 mb-5">
+        <!-- Score ring: an actual progress arc (score/100 as stroke-dashoffset) instead of a
+             flat colored fill, so the score reads at a glance instead of only via the number. -->
+        <div th:with="score=${atsResult.totalScore()}" class="relative w-16 h-16 shrink-0">
+            <svg width="64" height="64" viewBox="0 0 64 64" class="-rotate-90">
+                <circle cx="32" cy="32" r="30" fill="none" stroke="var(--ink)" stroke-width="2"/>
+                <circle cx="32" cy="32" r="25" fill="none" stroke="var(--line)" stroke-width="5"/>
+                <circle cx="32" cy="32" r="25" fill="none" stroke-width="5" stroke-linecap="round"
+                        class="ats-ring-progress"
+                        th:stroke="${score >= 90 ? 'var(--mint)' : score >= 70 ? 'var(--sun)' : 'var(--coral)'}"
+                        stroke-dasharray="157.08"
+                        th:stroke-dashoffset="${157.08 - (157.08 * score / 100)}"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center font-display font-bold text-ink">
+                <span id="ats-score-number" class="text-sm leading-none" th:text="${atsResult.totalScore()}">0</span>
+                <span class="text-[8px] font-semibold text-ink/50 leading-none mt-0.5">/100</span>
+            </div>
+        </div>
+        <div>
+            <div class="font-display font-bold text-sm text-ink">ATS Score</div>
+            <div th:if="${atsResult.totalScore() >= 90}" class="text-xs text-mint font-bold">Great — you're ATS-ready ✓</div>
+            <div th:if="${atsResult.totalScore() < 90 && atsResult.totalScore() >= 70}" class="text-xs text-sun font-bold">Getting there — a few fixes left</div>
+            <div th:if="${atsResult.totalScore() < 70}" class="text-xs text-coral font-bold">Needs work — see checklist below</div>
+        </div>
+    </div>
+
+    <!-- Detailed checklist with partial credit. data-status lets the AI Assistant's "Improve
+         ATS" tab filter this down to just the non-passing items without a second query. -->
+    <div id="ats-checklist" class="space-y-3">
+        <div th:each="check : ${atsResult.checks()}" th:attr="data-status=${check.status()}" class="flex items-start gap-3 text-sm">
+            <span th:classappend="${check.status() == 'pass'} ? 'bg-mint' : (${check.status() == 'partial'} ? 'bg-sun' : 'bg-coral')"
+                  class="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"></span>
+            <div>
+                <div class="font-display font-bold text-ink"
+                     th:text="${check.checkName()} + ' — ' + ${check.pointsEarned()} + '/' + ${check.pointsPossible()}"></div>
+                <div class="text-ink/70 font-medium" th:text="${check.reason()}"></div>
+                <div th:if="${check.fixTip() != null and !check.fixTip().isEmpty()}"
+                     class="text-xs text-coral font-bold mt-0.5" th:text="'Fix: ' + ${check.fixTip()}"></div>
+            </div>
+        </div>
+    </div>
+</div>

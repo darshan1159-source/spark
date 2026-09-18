@@ -1,0 +1,49 @@
+/*
+ * styles.css — minimal global styles.
+ * Tailwind CDN provides the utility classes; this file handles
+ * things that Tailwind's JIT mode can't inline easily.
+ */
+
+/* Smooth transitions for htmx swaps */
+.htmx-settling { opacity: 0; }
+.htmx-swapping  { opacity: 0; transition: opacity 300ms ease-out; }
+.htmx-added     { opacity: 0; }
+.htmx-added.htmx-settling { opacity: 1; transition: opacity 300ms ease-in; }
+
+/* Uniform form input — also applied via .form-input in builder.html inline style */
+.form-input {
+    display: block;
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.75rem;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: 'Inter', sans-serif;
+}
+.form-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.form-input::placeholder { color: #94a3b8; }
+
+/* Animate on Scroll fallback (AOS not loaded outside landing) */
+[data-aos] { opacity: 1 !important; transform: none !important; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

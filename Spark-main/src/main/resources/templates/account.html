@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Spark — Account</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { display: ['"Bricolage Grotesque"', 'sans-serif'], body: ['Figtree', 'sans-serif'] },
+                    colors: {
+                        paper: '#FFFDF7', ink: '#16171B', coral: '#FF5D5D', coralDeep: '#E23F3F',
+                        cobalt: '#2F5BFF', cobaltDeep: '#1E3FCC', sun: '#FFC93C', mint: '#38C6A6', line: '#EDEAE0',
+                    },
+                },
+            },
+        };
+    </script>
+
+    <style>
+        :root{ --paper:#FFFDF7; --ink:#16171B; --coral:#FF5D5D; --cobalt:#2F5BFF; --sun:#FFC93C; --mint:#38C6A6; --line:#EDEAE0; }
+        body{
+            background-color:var(--paper);
+            background-image:radial-gradient(circle, rgba(22,23,27,.07) 1.3px, transparent 1.3px);
+            background-size:24px 24px;
+        }
+        a:focus-visible, button:focus-visible, input:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
+
+        .btn-primary{
+            display:inline-flex; align-items:center; justify-content:center; gap:.6rem; background:var(--ink); color:var(--paper);
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:.9rem;
+            padding:.7rem 1.4rem; border-radius:999px; border:2px solid var(--ink);
+            transition:transform .18s ease, background .18s ease, color .18s ease; cursor:pointer;
+        }
+        .btn-primary:hover{ background:var(--coral); border-color:var(--coral); }
+        .btn-primary:active{ transform:scale(.96); }
+        .btn-danger{
+            display:inline-flex; align-items:center; justify-content:center; gap:.6rem; background:var(--coral); color:var(--paper);
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:.9rem;
+            padding:.7rem 1.4rem; border-radius:999px; border:2px solid var(--ink);
+            transition:transform .18s ease, background .18s ease; cursor:pointer;
+        }
+        .btn-danger:hover{ background:var(--coralDeep); }
+        .btn-danger:active{ transform:scale(.96); }
+
+        .pill-item{
+            position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center;
+            height:38px; padding:0 20px; border-radius:9999px; border:2px solid var(--ink); background:transparent;
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:14px; color:var(--ink); cursor:pointer;
+        }
+        .pill-item .pill-fill{
+            position:absolute; inset:0; background:var(--ink); border-radius:9999px; z-index:1; pointer-events:none;
+            transform:scaleY(0); transform-origin:bottom; transition:transform .3s cubic-bezier(.22,1,.36,1);
+        }
+        .pill-item:hover .pill-fill{ transform:scaleY(1); }
+        .pill-item .pill-item-label{ position:relative; z-index:2; transition:color .25s ease; }
+        .pill-item:hover .pill-item-label{ color:var(--paper); }
+
+        .form-input{
+            display:block; width:100%; padding:.7rem .9rem; font-size:.9rem;
+            background:var(--paper); border:2px solid var(--line); border-radius:.65rem;
+            outline:none; transition:all .2s ease; font-family:'Figtree',sans-serif;
+        }
+        .form-input:focus{ border-color:var(--cobalt); box-shadow:0 0 0 3px rgba(47,91,255,.1); }
+
+        .settings-card{
+            background:var(--paper); border:2.5px solid var(--ink); border-radius:1.25rem;
+            padding:1.75rem; box-shadow:5px 5px 0 var(--ink);
+        }
+        .settings-card.danger{ box-shadow:5px 5px 0 var(--coral); }
+
+        .avatar-circle{
+            width:88px; height:88px; border-radius:50%; border:2.5px solid var(--ink); overflow:hidden;
+            display:flex; align-items:center; justify-content:center; flex-shrink:0;
+            background:var(--sun); font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:2rem; color:var(--ink);
+        }
+        .avatar-circle img{ width:100%; height:100%; object-fit:cover; }
+    </style>
+</head>
+<body class="font-body text-ink antialiased min-h-screen">
+
+<nav class="sticky top-0 z-20 border-b-2 border-ink bg-paper/90 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2 md:gap-4">
+            <a href="/" class="flex items-center gap-2">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="#FF5D5D" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 1l2.4 7.4L22 11l-7.6 2.6L12 21l-2.4-7.4L2 11l7.6-2.6L12 1z"/>
+                </svg>
+                <span class="font-display font-extrabold text-2xl">Spark</span>
+            </a>
+            <span class="text-ink/30 hidden md:inline">|</span>
+            <span class="text-sm text-ink/70 font-medium hidden md:inline">Account</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="/dashboard" class="pill-item"><span class="pill-fill" aria-hidden="true"></span><span class="pill-item-label">My Resumes</span></a>
+            <div th:replace="~{fragments/account-menu :: accountMenu}"></div>
+        </div>
+    </div>
+</nav>
+
+<main class="max-w-3xl mx-auto px-6 md:px-10 py-14">
+    <div class="mb-10">
+        <h1 class="font-display font-extrabold text-3xl mb-1">Account</h1>
+        <p class="text-ink/70 font-medium">Manage your profile, password, and account.</p>
+    </div>
+
+    <div th:if="${error}" class="mb-6 p-3 border-2 border-ink rounded-xl font-medium text-sm"
+         style="background:var(--coral); color:var(--paper);" th:text="${error}"></div>
+    <div th:if="${info}" class="mb-6 p-3 border-2 border-ink rounded-xl font-medium text-sm"
+         style="background:var(--mint); color:var(--ink);" th:text="${info}"></div>
+
+    <div class="flex flex-col gap-6">
+
+        <!-- Profile picture -->
+        <div class="settings-card">
+            <h2 class="font-display font-bold text-lg mb-4">Profile picture</h2>
+            <form action="/account/avatar" method="post" enctype="multipart/form-data" class="flex items-center gap-5 flex-wrap">
+                <div class="avatar-circle">
+                    <img th:if="${user.avatarFilename}" th:src="@{'/avatars/' + ${user.avatarFilename}}" alt="Your profile picture"/>
+                    <span th:unless="${user.avatarFilename}" th:text="${#strings.substring(user.username,0,1).toUpperCase()}">?</span>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif" required
+                           class="block w-full text-sm text-ink/70 font-medium file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-2 file:border-ink file:bg-transparent file:font-bold file:text-sm file:cursor-pointer hover:file:bg-ink hover:file:text-paper file:transition-colors"/>
+                    <p class="text-xs text-ink/50 font-medium mt-2">JPEG, PNG, WebP, or GIF — up to 5MB.</p>
+                </div>
+                <button type="submit" class="btn-primary">Upload</button>
+            </form>
+        </div>
+
+        <!-- Username -->
+        <div class="settings-card">
+            <h2 class="font-display font-bold text-lg mb-1">Username</h2>
+            <p class="text-ink/60 text-sm font-medium mb-4">Currently <span class="font-bold text-ink" th:text="${user.username}">username</span>.</p>
+            <form action="/account/username" method="post" class="space-y-3 max-w-sm">
+                <div>
+                    <label class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-1 block">New username</label>
+                    <input type="text" name="username" th:value="${user.username}" required class="form-input"/>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-1 block">Current password</label>
+                    <input type="password" name="currentPassword" required class="form-input" placeholder="To confirm it's you"/>
+                </div>
+                <button type="submit" class="btn-primary">Update username</button>
+            </form>
+        </div>
+
+        <!-- Password -->
+        <div class="settings-card">
+            <h2 class="font-display font-bold text-lg mb-4">Password</h2>
+            <form action="/account/password" method="post" class="space-y-3 max-w-sm">
+                <div>
+                    <label class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-1 block">Current password</label>
+                    <input type="password" name="currentPassword" required class="form-input"/>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-1 block">New password</label>
+                    <input type="password" name="newPassword" required minlength="8" class="form-input"/>
+                    <p class="text-xs text-ink/50 font-medium mt-1">At least 8 characters.</p>
+                </div>
+                <button type="submit" class="btn-primary">Update password</button>
+            </form>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="settings-card danger">
+            <h2 class="font-display font-bold text-lg mb-1">Delete account</h2>
+            <p class="text-ink/60 text-sm font-medium mb-4">Permanently deletes your account and every saved resume. This can't be undone.</p>
+            <form action="/account/delete" method="post" class="space-y-3 max-w-sm"
+                  onsubmit="return confirm('Delete your account and all saved resumes? This cannot be undone.');">
+                <div>
+                    <label class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-1 block">Current password</label>
+                    <input type="password" name="currentPassword" required class="form-input" placeholder="To confirm it's you"/>
+                </div>
+                <button type="submit" class="btn-danger">Delete my account</button>
+            </form>
+        </div>
+
+    </div>
+</main>
+</body>
+</html>

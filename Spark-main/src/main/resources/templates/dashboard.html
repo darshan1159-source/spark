@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Spark — My Resumes</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['"Bricolage Grotesque"', 'sans-serif'],
+                        body: ['Figtree', 'sans-serif'],
+                    },
+                    colors: {
+                        paper: '#FFFDF7', ink: '#16171B', coral: '#FF5D5D', coralDeep: '#E23F3F',
+                        cobalt: '#2F5BFF', cobaltDeep: '#1E3FCC', sun: '#FFC93C', mint: '#38C6A6', line: '#EDEAE0',
+                    },
+                },
+            },
+        };
+    </script>
+
+    <style>
+        :root{ --paper:#FFFDF7; --ink:#16171B; --coral:#FF5D5D; --cobalt:#2F5BFF; --sun:#FFC93C; --mint:#38C6A6; --line:#EDEAE0; }
+        body{
+            background-color:var(--paper);
+            background-image:radial-gradient(circle, rgba(22,23,27,.07) 1.3px, transparent 1.3px);
+            background-size:24px 24px;
+        }
+        a:focus-visible, button:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
+
+        .btn-primary{
+            display:inline-flex; align-items:center; justify-content:center; gap:.6rem; background:var(--ink); color:var(--paper);
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:.95rem;
+            padding:.8rem 1.6rem; border-radius:999px; border:2px solid var(--ink);
+            transition:transform .18s ease, background .18s ease, color .18s ease;
+        }
+        .btn-primary:hover{ background:var(--coral); border-color:var(--coral); }
+        .btn-primary:active{ transform:scale(.96); }
+        .btn-secondary{
+            display:inline-flex; align-items:center; justify-content:center; gap:.5rem; background:transparent; color:var(--ink);
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:.85rem;
+            padding:.55rem 1.1rem; border-radius:999px; border:2px solid var(--ink);
+            transition:transform .18s ease, background .18s ease;
+        }
+        .btn-secondary:hover{ background:var(--ink); color:var(--paper); }
+
+        /* nav logout — same liquid hover-fill pill used on the landing page nav */
+        .pill-item{
+            position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center;
+            height:38px; padding:0 20px; border-radius:9999px; border:2px solid var(--ink); background:transparent;
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:14px; color:var(--ink); cursor:pointer;
+        }
+        .pill-item .pill-fill{
+            position:absolute; inset:0; background:var(--ink); border-radius:9999px; z-index:1; pointer-events:none;
+            transform:scaleY(0); transform-origin:bottom; transition:transform .3s cubic-bezier(.22,1,.36,1);
+        }
+        .pill-item:hover .pill-fill{ transform:scaleY(1); }
+        .pill-item .pill-item-label{ position:relative; z-index:2; transition:color .25s ease; }
+        .pill-item:hover .pill-item-label{ color:var(--paper); }
+
+        /* scattered sticker accent, same motif as the landing page */
+        .sticker{
+            position:absolute; background:var(--paper); border:2.5px solid var(--ink); border-radius:1rem;
+            padding:.7rem 1rem; font-family:'Figtree',sans-serif; font-weight:700; font-size:.85rem;
+            box-shadow:5px 5px 0 var(--ink); transition:transform .25s ease;
+        }
+        .sticker:hover{ transform:rotate(0deg) scale(1.05) !important; }
+
+        /* template accent badges */
+        .tpl-badge-ats{ background:var(--coral); color:var(--ink); }
+        .tpl-badge-editorial{ background:var(--cobalt); color:var(--paper); }
+        .tpl-badge-sidebar{ background:var(--sun); color:var(--ink); }
+
+        .resume-card {
+            position:relative; overflow:hidden;
+            background: var(--paper);
+            border: 2.5px solid var(--ink);
+            border-radius: 1.25rem;
+            padding: 1.75rem;
+            box-shadow: 5px 5px 0 var(--ink);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            --spot-x:50%; --spot-y:50%;
+        }
+        .resume-card::before{
+            content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+            background:radial-gradient(circle at var(--spot-x) var(--spot-y), rgba(255,93,93,.16), transparent 65%);
+            opacity:0; transition:opacity .4s ease;
+        }
+        .resume-card:hover::before{ opacity:1; }
+        .resume-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 9px 9px 0 var(--coral);
+        }
+
+        /* PENDING card — sits over the SAME visibility:hidden placeholder markup as a READY
+           card's info block (see resume-card.html), so the wrapper naturally sizes to the exact
+           same height/shape — no guessed min-height. Flat, hard-edged darkened overlay (no
+           blur/glow, matching this app's design language everywhere else) covers only that info
+           area, not the button row below. */
+        .resume-card-pending-overlay{
+            position:absolute; inset:0; z-index:5; overflow:hidden;
+            background:rgba(22,23,27,.6);
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:.6rem; pointer-events:none;
+        }
+        /* One-directional, constant-speed sweep (not ease-in-out+alternate, which visibly stutters
+           at each reversal since velocity hits zero at both ends of every half-cycle) — this is
+           what makes it read as a clean "scan" rather than a bouncing loading bar. Fades in/out at
+           the very top/bottom so the instant reset-to-top at the loop seam is invisible. */
+        .resume-card-scanline{
+            position:absolute; left:0; right:0; height:3px; background:var(--coral);
+            animation:resumeScan 2s linear infinite;
+        }
+        @keyframes resumeScan{
+            0%   { top:4%;  opacity:0; }
+            8%   { opacity:1; }
+            92%  { opacity:1; }
+            100% { top:94%; opacity:0; }
+        }
+        .resume-card-pending-text{
+            position:relative; color:var(--paper); font-family:'Figtree',sans-serif; font-weight:700;
+            font-size:.9rem; text-align:center; padding:0 1rem;
+        }
+        @media (prefers-reduced-motion: reduce){
+            .resume-card-scanline{ animation:none; top:50%; }
+        }
+
+        /* "New" tag — same flat sticker language as the rest of the app (hard border + offset
+           shadow), sized down and kept fully inside the card's padding so .resume-card's own
+           overflow:hidden (needed for the hover spotlight sheen) never clips it. */
+        .resume-card-new-tag{
+            position:absolute; top:.9rem; right:.9rem; z-index:2;
+            background:var(--mint); border:2px solid var(--ink); border-radius:999px;
+            padding:.25rem .65rem; font-family:'Figtree',sans-serif; font-weight:800; font-size:.68rem;
+            color:var(--ink); box-shadow:3px 3px 0 var(--ink); transform:rotate(4deg);
+            text-transform:uppercase; letter-spacing:.03em;
+        }
+
+        /* "ready" toast — same flat sticker language (hard border + offset shadow) as the rest of the app. */
+        .ready-toast-banner{
+            display:flex; align-items:center; justify-content:space-between; gap:1rem;
+            background:var(--mint); border:2.5px solid var(--ink); border-radius:1rem;
+            padding:.9rem 1.2rem; margin-bottom:2rem; box-shadow:5px 5px 0 var(--ink);
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:.9rem; color:var(--ink);
+        }
+        .ready-toast-banner button{
+            background:none; border:none; font-weight:800; cursor:pointer; color:var(--ink); font-size:1rem;
+            line-height:1; padding:.2rem .3rem;
+        }
+    </style>
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+</head>
+<body class="font-body text-ink antialiased min-h-screen">
+
+<nav class="sticky top-0 z-20 border-b-2 border-ink bg-paper/90 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2 md:gap-4">
+            <a href="/" class="flex items-center gap-2">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="#FF5D5D" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 1l2.4 7.4L22 11l-7.6 2.6L12 21l-2.4-7.4L2 11l7.6-2.6L12 1z"/>
+                </svg>
+                <span class="font-display font-extrabold text-2xl">Spark</span>
+            </a>
+            <span class="text-ink/30 hidden md:inline">|</span>
+            <span class="text-sm text-ink/70 font-medium hidden md:inline">My Resumes</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <div th:replace="~{fragments/account-menu :: accountMenu}"></div>
+        </div>
+    </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-6 md:px-10 py-14">
+    <div id="ready-toast">
+        <div th:if="${readySummary}" class="ready-toast-banner">
+            <span th:text="${readySummary}"></span>
+            <button type="button" aria-label="Dismiss" onclick="this.closest('.ready-toast-banner').remove()">✕</button>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between mb-10 flex-wrap gap-4">
+        <div class="relative">
+            <div class="sticker hidden sm:block" style="top:-1.3rem; left:9.5rem; transform:rotate(7deg); background:var(--mint); font-size:.7rem; padding:.3rem .55rem;">✨ all yours</div>
+            <h1 class="font-display font-extrabold text-3xl mb-1">My Resumes</h1>
+            <p class="text-ink/70 font-medium">Pick one to keep editing, or start a new one.</p>
+        </div>
+        <form action="/dashboard/new" method="post">
+            <button type="submit" class="btn-primary">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Resume
+            </button>
+        </form>
+    </div>
+
+    <div th:if="${resumes.isEmpty()}" class="text-center py-24 max-w-md mx-auto">
+        <div class="mb-6 inline-flex items-center justify-center w-20 h-20 rounded-full border-2 border-ink" style="background:var(--sun);">
+            <svg class="w-9 h-9" fill="none" stroke="var(--ink)" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+        </div>
+        <h2 class="font-display font-bold text-xl mb-2">No resumes yet</h2>
+        <p class="text-ink/60 font-medium mb-6">Start from scratch or upload an existing one — your first resume is one click away.</p>
+        <form action="/dashboard/new" method="post">
+            <button type="submit" class="btn-primary mx-auto">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Create your first resume
+            </button>
+        </form>
+    </div>
+
+    <div th:unless="${resumes.isEmpty()}" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- th:each and th:replace deliberately NOT on the same tag: Thymeleaf processes fragment
+             inclusion before iteration, so `resume` wouldn't be bound yet if they were combined. -->
+        <th:block th:each="resume : ${resumes}">
+            <div th:replace="~{fragments/resume-card :: resumeCard(${resume}, ${justReadyIds.contains(resume.id)})}"></div>
+        </th:block>
+    </div>
+</main>
+
+<script>
+    document.querySelectorAll('.resume-card').forEach((el) => {
+        el.addEventListener('mousemove', (e) => {
+            const r = el.getBoundingClientRect();
+            el.style.setProperty('--spot-x', `${e.clientX - r.left}px`);
+            el.style.setProperty('--spot-y', `${e.clientY - r.top}px`);
+        });
+    });
+</script>
+</body>
+</html>

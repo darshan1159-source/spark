@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  Shared account menu: avatar bubble (photo, or an initial-letter fallback) that opens a
+  small dropdown with "Account" and "Log out" — replaces a bare logout button on every
+  authenticated page. Self-contained (style + script travel with the fragment) so every
+  page that includes it looks and behaves identically without copy-pasting markup.
+  Expects a "user" model attribute (a User entity) to already be in scope.
+  Referenced as: "fragments/account-menu :: accountMenu"
+-->
+<div th:fragment="accountMenu" class="relative" id="nav-account-menu">
+    <style>
+        #nav-account-menu .nav-avatar-btn{
+            width:40px; height:40px; border-radius:50%; border:2px solid var(--ink); overflow:hidden;
+            display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; flex-shrink:0;
+            background:var(--sun); font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:1rem; color:var(--ink);
+            transition:transform .18s ease;
+        }
+        #nav-account-menu .nav-avatar-btn:hover{ transform:scale(1.07); }
+        #nav-account-menu .nav-avatar-btn img{ width:100%; height:100%; object-fit:cover; }
+        #nav-account-menu .nav-avatar-popover{
+            position:absolute; top:calc(100% + .6rem); right:0; min-width:180px;
+            background:var(--ink); border-radius:1.25rem; box-shadow:0 12px 32px rgba(0,0,0,.18);
+            padding:.4rem; display:flex; flex-direction:column; gap:.25rem; z-index:60;
+            opacity:0; transform:translateY(-8px) scaleY(.96); transform-origin:top right; pointer-events:none;
+            transition:opacity .2s ease, transform .2s ease;
+        }
+        #nav-account-menu .nav-avatar-popover.open{ opacity:1; transform:none; pointer-events:auto; }
+        #nav-account-menu .nav-avatar-username{
+            padding:.6rem 1rem .3rem; font-size:.7rem; font-weight:700; color:rgba(255,253,247,.5);
+            text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        #nav-account-menu .nav-avatar-link{
+            display:block; width:100%; text-align:left; padding:.65rem 1rem; border:none; background:transparent; color:var(--paper);
+            font-family:'Figtree',sans-serif; font-weight:600; font-size:.9rem; text-decoration:none; border-radius:.9rem; cursor:pointer;
+        }
+        #nav-account-menu .nav-avatar-link:hover{ background:rgba(255,255,255,.08); }
+    </style>
+
+    <button id="nav-avatar-btn" type="button" class="nav-avatar-btn" title="Account"
+            aria-haspopup="true" aria-expanded="false" aria-controls="nav-avatar-popover">
+        <img th:if="${user.avatarFilename}" th:src="@{'/avatars/' + ${user.avatarFilename}}" alt=""/>
+        <span th:unless="${user.avatarFilename}" th:text="${#strings.substring(user.username,0,1).toUpperCase()}">?</span>
+    </button>
+
+    <div id="nav-avatar-popover" class="nav-avatar-popover" role="menu">
+        <div class="nav-avatar-username" th:text="${user.username}">username</div>
+        <a href="/account" class="nav-avatar-link" role="menuitem">Account</a>
+        <form action="/logout" method="post">
+            <button type="submit" class="nav-avatar-link" role="menuitem">Log out</button>
+        </form>
+    </div>
+
+    <script>
+        (function () {
+            const btn = document.getElementById('nav-avatar-btn');
+            const popover = document.getElementById('nav-avatar-popover');
+            if (!btn || !popover) return;
+            const close = () => {
+                btn.setAttribute('aria-expanded', 'false');
+                popover.classList.remove('open');
+            };
+            btn.addEventListener('click', () => {
+                const open = btn.getAttribute('aria-expanded') === 'true';
+                btn.setAttribute('aria-expanded', String(!open));
+                popover.classList.toggle('open', !open);
+            });
+            document.addEventListener('click', (e) => {
+                if (!popover.contains(e.target) && e.target !== btn && !btn.contains(e.target)) close();
+            });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+        })();
+    </script>
+</div>
+
+</body>
+</html>

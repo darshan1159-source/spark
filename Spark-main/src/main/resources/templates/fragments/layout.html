@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>ResumeForge — Build Your Resume</title>
+    <meta name="description" content="Build a beautiful, ATS-ready resume in minutes. Three professional layouts, live ATS scoring, and AI writing assistance."/>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+
+    <!-- Tailwind CSS (CDN play) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        heading: ['Sora', 'sans-serif'],
+                        body:    ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        accent:  '#6366f1', /* indigo-500 */
+                        accentDark: '#4f46e5',
+                        charcoal: '#1e1e2e',
+                        muted:    '#6b7280',
+                        surface:  '#f8f8fc',
+                        card:     '#ffffff',
+                    },
+                    boxShadow: {
+                        soft: '0 2px 16px rgba(0,0,0,0.07)',
+                        lift: '0 8px 32px rgba(99,102,241,0.18)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- htmx -->
+    <script src="https://unpkg.com/htmx.org@2.0.0" defer></script>
+
+    <!-- AOS (Animate on Scroll) — only needed on landing, harmless elsewhere -->
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css"/>
+    <script src="https://unpkg.com/aos@2.3.4/dist/aos.js" defer></script>
+
+    <!-- App styles -->
+    <link rel="stylesheet" th:href="@{/css/styles.css}"/>
+</head>
+<body class="bg-surface font-body text-charcoal antialiased">
+    <!-- Content rendered by each page -->
+    <th:block th:fragment="head-only"><!-- no-op fragment for head include --></th:block>
+</body>
+</html>

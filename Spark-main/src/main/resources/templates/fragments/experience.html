@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Experience list fragment: "fragments/experience :: experienceList" -->
+<div th:fragment="experienceList" id="experience-list" class="space-y-4">
+    <div th:if="${resume.experience.isEmpty()}" class="text-center py-8 px-2">
+        <div class="w-11 h-11 rounded-full flex items-center justify-center mx-auto mb-3 border-2 border-ink" style="background:var(--mint);">
+            <svg class="w-5 h-5" fill="none" stroke="var(--ink)" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m-4 6v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2H6a2 2 0 00-2 2z"/>
+            </svg>
+        </div>
+        <p class="text-sm font-bold text-ink mb-1">No experience added yet</p>
+        <p class="text-xs text-ink/60 font-medium">Add a role, internship, or training program.</p>
+    </div>
+    <div th:each="exp, idx : ${resume.experience}"
+         class="border-2 border-ink rounded-xl p-4 space-y-3" style="background:var(--paper); box-shadow:4px 4px 0 var(--ink);">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-ink/70 uppercase tracking-wider">Role #<span th:text="${idx.index + 1}">1</span></span>
+            <button type="button"
+                    th:attr="hx-delete=${'/builder/experience/' + exp.id}"
+                    hx-target="#experience-list"
+                    hx-swap="outerHTML"
+                    class="text-coral hover:text-coralDeep text-xs font-bold transition-colors flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                Remove
+            </button>
+        </div>
+        <form th:attr="hx-post=${'/builder/experience/' + exp.id}"
+              hx-target="#preview-container"
+              hx-swap="innerHTML"
+              hx-trigger="keyup delay:300ms, change delay:300ms"
+              class="grid grid-cols-2 gap-3">
+            <input name="title"   th:value="${exp.title}"   placeholder="Job title"  class="form-input"/>
+            <select name="type" class="form-input" title="Tag this entry as an internship or training program">
+                <option value=""           th:selected="${exp.type == null or exp.type == ''}">Experience</option>
+                <option value="Internship" th:selected="${exp.type == 'Internship'}">Internship</option>
+                <option value="Training"   th:selected="${exp.type == 'Training'}">Training</option>
+            </select>
+            <input name="company" th:value="${exp.company}" placeholder="Company"     class="col-span-2 form-input"/>
+            <input name="dates"   th:value="${exp.dates}"   placeholder="Dates (e.g. Jun 2022–Present)"
+                   class="col-span-2 form-input"/>
+            <div class="col-span-2 relative">
+                <textarea name="description" th:text="${exp.description}" rows="4"
+                          placeholder="Describe your responsibilities and achievements (use bullet points: • …)"
+                          class="form-input w-full resize-none"></textarea>
+                <button type="button"
+                        class="ai-suggest-btn absolute bottom-2 right-2"
+                        data-field-name="description"
+                        th:data-field-index="${idx.index}"
+                        data-section="experience"
+                        title="Improve with AI">✦ AI</button>
+            </div>
+        </form>
+    </div>
+
+    <button type="button"
+            hx-post="/builder/experience/add"
+            hx-target="#experience-list"
+            hx-swap="outerHTML"
+            class="w-full py-3 border-2 border-dashed border-ink rounded-xl text-ink/70 hover:border-coral hover:text-coral hover:bg-coral/10 text-sm font-bold transition-all flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Add experience entry
+    </button>
+</div>
+
+<!-- Add/delete responses swap the list AND refresh the preview + ATS score out of band -->
+<th:block th:fragment="experienceListWithPreview">
+    <div th:replace="~{::experienceList}"></div>
+    <div hx-swap-oob="innerHTML:#preview-container">
+        <div th:replace="~{fragments/preview :: previewAndBadge}"></div>
+    </div>
+</th:block>
+
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Resume</title>
+    <style>
+        .ats-body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-size: 11pt;
+            color: #1a1a1a;
+            padding: 1.8rem 2rem;
+            max-width: 760px;
+            margin: 0 auto;
+            background: #ffffff;
+        }
+        .ats-name { font-size: 22pt; font-weight: 700; letter-spacing: -0.5px; margin-bottom: .2rem; }
+        .ats-contact { font-size: 9pt; color: #444; margin-bottom: 1.2rem; }
+        .ats-contact a { color: #444; text-decoration: none; }
+        .ats-section-header {
+            font-size: 10pt; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1.5px; border-bottom: 2px solid #1a1a1a;
+            padding-bottom: .2rem; margin: 1.2rem 0 .6rem;
+        }
+        .ats-entry-title { font-weight: 700; font-size: 11pt; }
+        .ats-entry-sub { font-size: 9.5pt; color: #555; margin-bottom: .25rem; }
+        .ats-entry-desc { font-size: 10pt; white-space: pre-line; margin-left: .25rem; }
+        .ats-skills { display: flex; flex-wrap: wrap; gap: .3rem; }
+        .ats-skill { font-size: 9.5pt; background: #f0f0f0; border-radius: 3px; padding: 1px 8px; }
+        .ats-empty { color: #aaa; font-size: 9.5pt; font-style: italic; }
+    </style>
+</head>
+<body>
+<div class="ats-body">
+
+<!-- Name + contact -->
+<div class="ats-name" th:text="${resume.fullName ?: 'Your Name'}">Your Name</div>
+<div class="ats-contact">
+    <span th:if="${resume.email}" th:text="${resume.email}"></span>
+    <span th:if="${!#strings.isEmpty(resume.email) and !#strings.isEmpty(resume.phone)}"> · </span>
+    <span th:if="${resume.phone}" th:text="${resume.phone}"></span>
+    <span th:if="${resume.linkedinUrl}"> · <a th:href="${resume.linkedinUrl}" th:text="${resume.linkedinUrl}"></a></span>
+    <span th:if="${resume.githubUrl}"> · <a th:href="${resume.githubUrl}" th:text="${resume.githubUrl}"></a></span>
+</div>
+
+<!-- Education -->
+<div class="ats-section-header">Education</div>
+<div th:if="${resume.education.isEmpty()}" class="ats-empty">No education entries yet.</div>
+<div th:each="edu : ${resume.education}" style="margin-bottom:.8rem">
+    <div class="ats-entry-title" th:text="${edu.institution}">Institution</div>
+    <div class="ats-entry-sub" th:text="${edu.degree + (edu.dates != null && !edu.dates.isBlank() ? ' · ' + edu.dates : '')}">Degree · Dates</div>
+    <div class="ats-entry-desc" th:if="${!edu.description.isBlank()}" th:text="${edu.description}"></div>
+</div>
+
+<!-- Experience -->
+<div th:if="${!resume.experience.isEmpty()}">
+    <div class="ats-section-header">Experience</div>
+    <div th:each="exp : ${resume.experience}" style="margin-bottom:.8rem">
+        <div class="ats-entry-title" th:text="${exp.title + (exp.type != null and !exp.type.isBlank() ? ' — ' + exp.type : '')}">Title</div>
+        <div class="ats-entry-sub" th:text="${exp.company + (exp.dates != null && !exp.dates.isBlank() ? ' · ' + exp.dates : '')}">Company · Dates</div>
+        <div class="ats-entry-desc" th:if="${!exp.description.isBlank()}" th:text="${exp.description}"></div>
+    </div>
+</div>
+
+<!-- Projects -->
+<div th:if="${!resume.projects.isEmpty()}">
+    <div class="ats-section-header">Projects</div>
+    <div th:each="proj : ${resume.projects}" style="margin-bottom:.8rem">
+        <div class="ats-entry-title" th:text="${proj.title}">Project</div>
+        <div class="ats-entry-sub" th:if="${!proj.techStack.isBlank()}" th:text="${proj.techStack}"></div>
+        <div class="ats-entry-desc" th:if="${!proj.summary.isBlank()}" th:text="${proj.summary}"></div>
+    </div>
+</div>
+
+<!-- Skills -->
+<div class="ats-section-header">Skills</div>
+<div th:if="${resume.skills.isEmpty()}" class="ats-empty">No skills added yet.</div>
+<div class="ats-skills">
+    <span th:each="skill : ${resume.skills}" class="ats-skill" th:text="${skill}">skill</span>
+</div>
+
+</div>
+</body>
+</html>

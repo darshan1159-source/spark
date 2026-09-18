@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Spark — Review</title>
+    <meta name="description" content="Full preview of your resume before exporting to PDF."/>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['"Bricolage Grotesque"', 'sans-serif'],
+                        body: ['Figtree', 'sans-serif'],
+                    },
+                    colors: {
+                        paper: '#FFFDF7',
+                        ink: '#16171B',
+                        coral: '#FF5D5D',
+                        coralDeep: '#E23F3F',
+                        cobalt: '#2F5BFF',
+                        cobaltDeep: '#1E3FCC',
+                        sun: '#FFC93C',
+                        mint: '#38C6A6',
+                        line: '#EDEAE0',
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        :root{
+            --paper:#FFFDF7; --ink:#16171B; --coral:#FF5D5D; --coral-deep:#E23F3F;
+            --cobalt:#2F5BFF; --sun:#FFC93C; --mint:#38C6A6; --line:#EDEAE0;
+        }
+        html{scroll-behavior:smooth;}
+        body{background:var(--paper);}
+        a:focus-visible, button:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
+
+        .btn { 
+            display:inline-flex; align-items:center; gap:.4rem; font-weight:700; 
+            border-radius:999px; padding:.6rem 1.4rem; transition: all .18s; 
+            cursor:pointer; font-size:.875rem; font-family:'Figtree',sans-serif;
+        }
+        .btn-outline { 
+            border:2px solid var(--ink); background:transparent; color:var(--ink); 
+        }
+        .btn-outline:hover { 
+            background:var(--ink); color:var(--paper); 
+        }
+        .btn-primary {
+            background:var(--ink); color:var(--paper); border:2px solid var(--ink);
+        }
+        .btn-primary:hover {
+            background:var(--coral); border-color:var(--coral);
+        }
+
+        /* Nav link — same liquid hover-fill pill used across every authenticated page */
+        .pill-item{
+            position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center;
+            height:38px; padding:0 20px; border-radius:9999px; border:2px solid var(--ink); background:transparent;
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:14px; color:var(--ink); cursor:pointer;
+        }
+        .pill-item .pill-fill{
+            position:absolute; inset:0; background:var(--ink); border-radius:9999px; z-index:1; pointer-events:none;
+            transform:scaleY(0); transform-origin:bottom; transition:transform .3s cubic-bezier(.22,1,.36,1);
+        }
+        .pill-item:hover .pill-fill{ transform:scaleY(1); }
+        .pill-item .pill-item-label{ position:relative; z-index:2; transition:color .25s ease; }
+        .pill-item:hover .pill-item-label{ color:var(--paper); }
+    </style>
+</head>
+<body class="font-body text-ink antialiased min-h-screen">
+
+<!-- Nav -->
+<nav class="sticky top-0 z-20 border-b-2 border-ink bg-paper/90 backdrop-blur-md px-6 py-4">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <a href="/" class="flex items-center gap-2">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="#FF5D5D" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 1l2.4 7.4L22 11l-7.6 2.6L12 21l-2.4-7.4L2 11l7.6-2.6L12 1z"/>
+                </svg>
+                <span class="font-display font-extrabold text-xl">Spark</span>
+            </a>
+            <span class="text-ink/30">|</span>
+            <span class="text-sm text-ink/70 font-medium">Review</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- ATS score mini badge -->
+            <div th:with="score=${atsResult.totalScore()}"
+                 th:classappend="${score >= 90 ? 'bg-mint text-ink' : score >= 70 ? 'bg-sun text-ink' : 'bg-coral text-paper'}"
+                 class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border-2 border-ink">
+                <span>ATS</span>
+                <span th:text="${atsResult.totalScore()}">0</span>
+                <span>/ 100</span>
+            </div>
+            <a href="/builder" id="btn-back-to-builder"
+               class="btn btn-outline">← Back to builder</a>
+            <form action="/export" method="post">
+                <button id="btn-export-review" type="submit" class="btn btn-primary">
+                    Export PDF ↓
+                </button>
+            </form>
+            <a href="/dashboard" class="pill-item hidden sm:inline-flex">
+                <span class="pill-fill" aria-hidden="true"></span><span class="pill-item-label">My Resumes</span>
+            </a>
+            <div th:replace="~{fragments/account-menu :: accountMenu}"></div>
+        </div>
+    </div>
+</nav>
+
+<!-- Full-width resume preview -->
+<main class="max-w-4xl mx-auto px-6 py-10">
+    <div class="border-2 border-ink rounded-2xl overflow-hidden" style="background:var(--paper); box-shadow:8px 8px 0 var(--ink);">
+        <th:block th:if="${resume.selectedTemplate == 'ats'}">
+            <div th:replace="~{resume-templates/ats :: body}"></div>
+        </th:block>
+        <th:block th:if="${resume.selectedTemplate == 'editorial'}">
+            <div th:replace="~{resume-templates/editorial :: body}"></div>
+        </th:block>
+        <th:block th:if="${resume.selectedTemplate == 'sidebar'}">
+            <div th:replace="~{resume-templates/sidebar :: body}"></div>
+        </th:block>
+        <!-- Fallback to ATS if no template is selected -->
+        <th:block th:if="${resume.selectedTemplate == null or resume.selectedTemplate == ''}">
+            <div th:replace="~{resume-templates/ats :: body}"></div>
+        </th:block>
+    </div>
+</main>
+
+</body>
+</html>

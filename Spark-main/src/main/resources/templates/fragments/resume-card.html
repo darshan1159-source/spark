@@ -1,0 +1,116 @@
+<!-- One resume's dashboard card, in its three possible states, plus the "ready" toast.
+     resumeCard takes explicit `resume`/`isJustReady` parameters — unlike every other fragment in
+     this app (experience.html, projects.html, ats-badge.html, ...), which read implicitly from
+     the Model because they're only ever returned directly as a controller's view string. This
+     one is also th:replace'd from INSIDE dashboard.html's th:each loop; passing it explicitly
+     avoids relying on cross-file implicit variable inheritance for a loop variable. -->
+<div th:fragment="resumeCard(resume, isJustReady)" th:switch="${resume.parseStatus.name()}">
+
+    <!-- READY. The "New" tag shows only on the one card whose ready-notification this render
+         just claimed (see DashboardController) — persisted via Resume.notifiedReady, so it's
+         gone on the very next page load or poll regardless of whether the student actually
+         opened the resume, matching a plain "seen it" semantic rather than an "acted on it" one. -->
+    <div th:case="'READY'" class="resume-card flex flex-col gap-3">
+        <div th:if="${isJustReady}" class="resume-card-new-tag">✨ New</div>
+        <div>
+            <span class="inline-block w-fit text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full mb-2"
+                  th:classappend="${resume.selectedTemplate == 'ats'} ? 'tpl-badge-ats' : (${resume.selectedTemplate == 'editorial'} ? 'tpl-badge-editorial' : 'tpl-badge-sidebar')"
+                  th:text="${resume.selectedTemplate}">ats</span>
+            <h2 class="font-display font-bold text-xl leading-snug" th:text="${resume.title}">Untitled resume</h2>
+            <p class="text-ink/60 text-sm font-medium mt-1"
+               th:text="${resume.fullName != null and !resume.fullName.isBlank() ? resume.fullName : 'No name yet'}"></p>
+            <p class="text-ink/40 text-xs font-medium mt-2"
+               th:text="'Updated ' + ${#temporals.format(resume.updatedAt, 'MMM d, yyyy')}"></p>
+        </div>
+        <div class="flex gap-2 mt-auto pt-1">
+            <form th:action="@{'/dashboard/' + ${resume.id} + '/select'}" method="post" class="flex-1">
+                <button type="submit" class="btn-primary w-full justify-center text-sm py-2">Edit</button>
+            </form>
+            <form th:action="@{'/dashboard/' + ${resume.id} + '/delete'}" method="post"
+                  onsubmit="return confirm('Delete this resume? This cannot be undone.');">
+                <button type="submit" class="btn-secondary hover:border-coral hover:text-coral hover:bg-transparent"
+                        style="padding:.55rem .8rem;" title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PENDING — identical structure/classes to READY's info block (just visibility:hidden
+         placeholder content of realistic length) so the card is the exact same size and shape,
+         with a flat darkened overlay + scanning line covering only that info area — not the
+         button row below, which stays real, visible, and clickable (Delete works; Edit is
+         omitted, nothing real to load yet). Self-polls via htmx until the background parse
+         finishes. -->
+    <div th:case="'PENDING'" class="resume-card flex flex-col gap-3"
+         th:id="${'resume-card-' + resume.id}"
+         th:attr="hx-get=${'/dashboard/' + resume.id + '/status'}"
+         hx-trigger="every 4s" hx-swap="outerHTML">
+        <!-- Placeholder info block is visibility:hidden (not removed) purely to reserve the exact
+             same layout height/shape as a READY card. The Delete row below stays real and
+             visible (not hidden) — it just ends up visually under the overlay, which spans the
+             WHOLE card (title area + button row, like the original design) with pointer-events:
+             none, so a click still reaches this real button underneath. -->
+        <div style="visibility:hidden;">
+            <span class="inline-block w-fit text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full mb-2">ats</span>
+            <h2 class="font-display font-bold text-xl leading-snug">Placeholder Resume Title</h2>
+            <p class="text-ink/60 text-sm font-medium mt-1">Placeholder Full Name</p>
+            <p class="text-ink/40 text-xs font-medium mt-2">Updated Jan 1, 2026</p>
+        </div>
+        <div class="flex gap-2 mt-auto pt-1">
+            <div class="flex-1"></div>
+            <form th:action="@{'/dashboard/' + ${resume.id} + '/delete'}" method="post"
+                  onsubmit="return confirm('Delete this resume? This cannot be undone.');">
+                <button type="submit" class="btn-secondary hover:border-coral hover:text-coral hover:bg-transparent"
+                        style="padding:.55rem .8rem;" title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+        <div class="resume-card-pending-overlay">
+            <div class="resume-card-scanline"></div>
+            <p class="resume-card-pending-text">Parsing your resume…</p>
+        </div>
+    </div>
+
+    <!-- FAILED — no retry: the original uploaded bytes aren't kept anywhere past the background
+         task's lifetime, so the only path forward is delete and re-upload. -->
+    <div th:case="'FAILED'" class="resume-card flex flex-col gap-3">
+        <div>
+            <span class="inline-block w-fit text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full mb-2"
+                  style="background:var(--coral); color:var(--paper);">Failed</span>
+            <h2 class="font-display font-bold text-xl leading-snug">Couldn't parse this resume</h2>
+            <p class="text-ink/60 text-sm font-medium mt-1" th:text="${resume.parseError}"></p>
+        </div>
+        <div class="flex gap-2 mt-auto pt-1">
+            <div class="flex-1"></div>
+            <form th:action="@{'/dashboard/' + ${resume.id} + '/delete'}" method="post"
+                  onsubmit="return confirm('Delete this resume? This cannot be undone.');">
+                <button type="submit" class="btn-secondary hover:border-coral hover:text-coral hover:bg-transparent"
+                        style="padding:.55rem .8rem;" title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Poll-endpoint response: the card above, plus an out-of-band toast when this poll is the one
+     that "won" the ready-notification claim. When justBecameReady is false, th:if removes the
+     toast element entirely — the response simply has no #ready-toast element, which is exactly
+     what "no toast this time" needs to look like for htmx's OOB handling to do nothing. -->
+<th:block th:fragment="resumeCardStatus">
+    <div th:replace="~{::resumeCard(${resume}, ${justBecameReady})}"></div>
+    <div th:if="${justBecameReady}" id="ready-toast" hx-swap-oob="true">
+        <div class="ready-toast-banner">
+            <span>✓ Your resume has been parsed and is ready to edit.</span>
+            <button type="button" aria-label="Dismiss" onclick="this.closest('.ready-toast-banner').remove()">✕</button>
+        </div>
+    </div>
+</th:block>

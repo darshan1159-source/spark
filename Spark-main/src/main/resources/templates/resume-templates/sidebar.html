@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<!--
+  Sidebar Layout — narrow left sidebar (contact, skills, education) + wide right body.
+  Fragment: "resume-templates/sidebar :: body"
+-->
+<body>
+<div th:fragment="body" class="sb-wrap">
+<style>
+  .sb-wrap { font-family:'Arial','Helvetica',sans-serif; display:flex; min-height:500px; background: #ffffff; }
+  .sb-left {
+    width:220px; min-width:220px; background:#16171B; color:#e2e8f0;
+    padding:2rem 1.4rem; display:flex; flex-direction:column; gap:.2rem;
+  }
+  .sb-name { font-size:16pt; font-weight:800; color:#fff; line-height:1.2; margin-bottom:.5rem; }
+  .sb-contact-item { font-size:7.5pt; color:#94a3b8; margin-bottom:.2rem; word-break:break-all; }
+  .sb-contact-item a { color:#94a3b8; text-decoration:none; }
+  .sb-section-label {
+    font-size:7pt; font-weight:800; text-transform:uppercase;
+    letter-spacing:2px; color:#FFC93C; margin:1.2rem 0 .4rem;
+  }
+  .sb-skill-badge {
+    display:inline-block; background:#2F5BFF; color:#c7d2fe;
+    border-radius:3px; padding:2px 7px; font-size:7.5pt;
+    font-weight:600; margin:.15rem .1rem;
+  }
+  .sb-edu-entry { margin-bottom:.7rem; }
+  .sb-edu-inst { font-size:8.5pt; font-weight:700; color:#e2e8f0; }
+  .sb-edu-degree { font-size:7.5pt; color:#94a3b8; }
+
+  .sb-right { flex:1; padding:2rem 2.2rem; color:#16171B; }
+  .sb-right-section-header {
+    font-size:8pt; font-weight:800; text-transform:uppercase;
+    letter-spacing:2px; color:#2F5BFF;
+    border-bottom:2px solid #eef2ff; padding-bottom:.3rem; margin:1.4rem 0 .7rem;
+  }
+  .sb-right-section-header:first-child { margin-top:0; }
+  .sb-entry-title { font-weight:700; font-size:11pt; }
+  .sb-entry-sub { font-size:8.5pt; color:#6b7280; margin-bottom:.25rem; }
+  .sb-entry-desc { font-size:9.5pt; white-space:pre-line; }
+  .sb-empty { color:#aaa; font-size:9pt; font-style:italic; }
+  .sb-tag {
+    display:inline-block; background:#fff7e6; color:#b45309;
+    border-radius:4px; padding:1px 7px; font-size:7pt; font-weight:800;
+    text-transform:uppercase; letter-spacing:.5px; margin-left:.4rem; vertical-align:middle;
+  }
+</style>
+
+<!-- LEFT SIDEBAR -->
+<div class="sb-left">
+    <div class="sb-name jump-target" th:text="${resume.fullName ?: 'Your Name'}"
+         data-section="personal" data-field-name="fullName" title="Double-click to edit">Your Name</div>
+
+    <div th:if="${resume.email}"    class="sb-contact-item jump-target" th:text="${resume.email}"
+         data-section="personal" data-field-name="email" title="Double-click to edit"></div>
+    <div th:if="${resume.phone}"    class="sb-contact-item jump-target" th:text="${resume.phone}"
+         data-section="personal" data-field-name="phone" title="Double-click to edit"></div>
+    <div th:if="${resume.linkedinUrl}" class="sb-contact-item jump-target"
+         data-section="personal" data-field-name="linkedinUrl" title="Double-click to edit"><a th:href="${resume.linkedinUrl}">LinkedIn</a></div>
+    <div th:if="${resume.githubUrl}"   class="sb-contact-item jump-target"
+         data-section="personal" data-field-name="githubUrl" title="Double-click to edit"><a th:href="${resume.githubUrl}">GitHub</a></div>
+
+    <!-- Skills -->
+    <div class="sb-section-label">Skills</div>
+    <div th:if="${resume.skills.isEmpty()}" style="color:#64748b;font-size:7.5pt;font-style:italic">Add skills…</div>
+    <div>
+        <span th:each="skill : ${resume.skills}" class="sb-skill-badge jump-target" th:text="${skill}"
+              data-section="skills" data-field-name="skillsInput" title="Double-click to edit">skill</span>
+    </div>
+
+    <!-- Education (sidebar) -->
+    <div class="sb-section-label">Education</div>
+    <div th:if="${resume.education.isEmpty()}" style="color:#64748b;font-size:7.5pt;font-style:italic">Add education…</div>
+    <div th:each="edu, idx : ${resume.education}" class="sb-edu-entry">
+        <div class="sb-edu-inst jump-target" th:text="${edu.institution}"
+             data-section="education" th:data-field-index="${idx.index}" data-field-name="institution" title="Double-click to edit">Institution</div>
+        <div class="sb-edu-degree jump-target" th:text="${edu.degree}"
+             data-section="education" th:data-field-index="${idx.index}" data-field-name="degree" title="Double-click to edit">Degree</div>
+        <div th:if="${edu.dates}" class="sb-edu-degree jump-target" th:text="${edu.dates}"
+             data-section="education" th:data-field-index="${idx.index}" data-field-name="dates" title="Double-click to edit"></div>
+    </div>
+</div>
+
+<!-- RIGHT BODY -->
+<div class="sb-right">
+
+    <!-- Experience -->
+    <div th:if="${!resume.experience.isEmpty()}">
+        <div class="sb-right-section-header">Experience</div>
+        <div th:each="exp, idx : ${resume.experience}" style="margin-bottom:1rem">
+            <div class="sb-entry-title jump-target"
+                 data-section="experience" th:data-field-index="${idx.index}" data-field-name="title" title="Double-click to edit">
+                <span th:text="${exp.title}">Title</span>
+                <span th:if="${exp.type != null and !exp.type.isBlank()}" class="sb-tag" th:text="${exp.type}"></span>
+            </div>
+            <div class="sb-entry-sub jump-target" th:text="${exp.company + (exp.dates != null && !exp.dates.isBlank() ? '  ·  ' + exp.dates : '')}"
+                 data-section="experience" th:data-field-index="${idx.index}" data-field-name="company" title="Double-click to edit">Company</div>
+            <div class="sb-entry-desc jump-target" th:if="${!exp.description.isBlank()}" th:text="${exp.description}"
+                 data-section="experience" th:data-field-index="${idx.index}" data-field-name="description" title="Double-click to edit"></div>
+        </div>
+    </div>
+
+    <!-- Projects -->
+    <div th:if="${!resume.projects.isEmpty()}">
+        <div class="sb-right-section-header">Projects</div>
+        <div th:each="proj, idx : ${resume.projects}" style="margin-bottom:1rem">
+            <div class="sb-entry-title jump-target" th:text="${proj.title}"
+                 data-section="projects" th:data-field-index="${idx.index}" data-field-name="title" title="Double-click to edit">Project</div>
+            <div class="sb-entry-sub jump-target" th:if="${!proj.techStack.isBlank()}" th:text="${proj.techStack}"
+                 data-section="projects" th:data-field-index="${idx.index}" data-field-name="techStack" title="Double-click to edit"></div>
+            <div class="sb-entry-desc jump-target" th:if="${!proj.summary.isBlank()}" th:text="${proj.summary}"
+                 data-section="projects" th:data-field-index="${idx.index}" data-field-name="summary" title="Double-click to edit"></div>
+        </div>
+    </div>
+
+    <div th:if="${resume.experience.isEmpty() && resume.projects.isEmpty()}" class="sb-empty">
+        Add experience or projects to see them here.
+    </div>
+</div>
+
+</div>
+</body>
+</html>

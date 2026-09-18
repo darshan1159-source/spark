@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<th:block th:fragment="previewAndBadge">
+    <div class="bg-paper border-2 border-ink min-h-full overflow-hidden transition-opacity duration-300 ease-in-out" id="preview-pane" style="box-shadow:6px 6px 0 var(--ink);">
+        <th:block th:if="${resume.selectedTemplate == 'ats'}">
+            <div th:replace="~{resume-templates/ats :: body}"></div>
+        </th:block>
+        <th:block th:if="${resume.selectedTemplate == 'editorial'}">
+            <div th:replace="~{resume-templates/editorial :: body}"></div>
+        </th:block>
+        <th:block th:if="${resume.selectedTemplate == 'sidebar'}">
+            <div th:replace="~{resume-templates/sidebar :: body}"></div>
+        </th:block>
+        <!-- Fallback to ATS if no template is selected -->
+        <th:block th:if="${resume.selectedTemplate == null or resume.selectedTemplate == ''}">
+            <div th:replace="~{resume-templates/ats :: body}"></div>
+        </th:block>
+    </div>
+    <div th:replace="~{fragments/ats-badge :: atsBadge}"></div>
+</th:block>
+
+</body>
+</html>

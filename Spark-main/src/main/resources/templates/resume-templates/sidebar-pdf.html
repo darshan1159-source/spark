@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Resume</title>
+    <style>
+        /* PDF renderer (openhtmltopdf) doesn't reliably support CSS flex for page-level
+           columns — table-cell is the reliably-supported way to get true side-by-side columns. */
+        .sb-wrap { font-family:'Arial','Helvetica',sans-serif; display:table; width:100%; background: #ffffff; }
+        .sb-left {
+            display:table-cell; width:220px; background:#16171B; color:#e2e8f0;
+            padding:2rem 1.4rem; vertical-align:top;
+        }
+        .sb-name { font-size:16pt; font-weight:800; color:#fff; line-height:1.2; margin-bottom:.5rem; }
+        .sb-contact-item { font-size:7.5pt; color:#94a3b8; margin-bottom:.2rem; word-break:break-all; }
+        .sb-contact-item a { color:#94a3b8; text-decoration:none; }
+        .sb-section-label {
+            font-size:7pt; font-weight:800; text-transform:uppercase;
+            letter-spacing:2px; color:#FFC93C; margin:1.2rem 0 .4rem;
+        }
+        .sb-skill-badge {
+            display:inline-block; background:#2F5BFF; color:#c7d2fe;
+            border-radius:3px; padding:2px 7px; font-size:7.5pt;
+            font-weight:600; margin:.15rem .1rem;
+        }
+        .sb-edu-entry { margin-bottom:.7rem; }
+        .sb-edu-inst { font-size:8.5pt; font-weight:700; color:#e2e8f0; }
+        .sb-edu-degree { font-size:7.5pt; color:#94a3b8; }
+
+        .sb-right { display:table-cell; padding:2rem 2.2rem; color:#16171B; vertical-align:top; }
+        .sb-right-section-header {
+            font-size:8pt; font-weight:800; text-transform:uppercase;
+            letter-spacing:2px; color:#2F5BFF;
+            border-bottom:2px solid #eef2ff; padding-bottom:.3rem; margin:1.4rem 0 .7rem;
+        }
+        .sb-right-section-header:first-child { margin-top:0; }
+        .sb-entry-title { font-weight:700; font-size:11pt; }
+        .sb-entry-sub { font-size:8.5pt; color:#6b7280; margin-bottom:.25rem; }
+        .sb-entry-desc { font-size:9.5pt; white-space:pre-line; }
+        .sb-empty { color:#aaa; font-size:9pt; font-style:italic; }
+        .sb-tag {
+            display:inline-block; background:#fff7e6; color:#b45309;
+            border-radius:4px; padding:1px 7px; font-size:7pt; font-weight:800;
+            text-transform:uppercase; letter-spacing:.5px; margin-left:.4rem; vertical-align:middle;
+        }
+    </style>
+</head>
+<body>
+<div class="sb-wrap">
+<!-- LEFT SIDEBAR -->
+<div class="sb-left">
+    <div class="sb-name" th:text="${resume.fullName ?: 'Your Name'}">Your Name</div>
+
+    <div th:if="${resume.email}"    class="sb-contact-item" th:text="${resume.email}"></div>
+    <div th:if="${resume.phone}"    class="sb-contact-item" th:text="${resume.phone}"></div>
+    <div th:if="${resume.linkedinUrl}" class="sb-contact-item"><a th:href="${resume.linkedinUrl}">LinkedIn</a></div>
+    <div th:if="${resume.githubUrl}"   class="sb-contact-item"><a th:href="${resume.githubUrl}">GitHub</a></div>
+
+    <!-- Skills -->
+    <div class="sb-section-label">Skills</div>
+    <div th:if="${resume.skills.isEmpty()}" style="color:#64748b;font-size:7.5pt;font-style:italic">Add skills…</div>
+    <div>
+        <span th:each="skill : ${resume.skills}" class="sb-skill-badge" th:text="${skill}">skill</span>
+    </div>
+
+    <!-- Education (sidebar) -->
+    <div class="sb-section-label">Education</div>
+    <div th:if="${resume.education.isEmpty()}" style="color:#64748b;font-size:7.5pt;font-style:italic">Add education…</div>
+    <div th:each="edu : ${resume.education}" class="sb-edu-entry">
+        <div class="sb-edu-inst" th:text="${edu.institution}">Institution</div>
+        <div class="sb-edu-degree" th:text="${edu.degree}">Degree</div>
+        <div th:if="${edu.dates}" class="sb-edu-degree" th:text="${edu.dates}"></div>
+    </div>
+</div>
+
+<!-- RIGHT BODY -->
+<div class="sb-right">
+
+    <!-- Experience -->
+    <div th:if="${!resume.experience.isEmpty()}">
+        <div class="sb-right-section-header">Experience</div>
+        <div th:each="exp : ${resume.experience}" style="margin-bottom:1rem">
+            <div class="sb-entry-title">
+                <span th:text="${exp.title}">Title</span>
+                <span th:if="${exp.type != null and !exp.type.isBlank()}" class="sb-tag" th:text="${exp.type}"></span>
+            </div>
+            <div class="sb-entry-sub" th:text="${exp.company + (exp.dates != null && !exp.dates.isBlank() ? '  ·  ' + exp.dates : '')}">Company</div>
+            <div class="sb-entry-desc" th:if="${!exp.description.isBlank()}" th:text="${exp.description}"></div>
+        </div>
+    </div>
+
+    <!-- Projects -->
+    <div th:if="${!resume.projects.isEmpty()}">
+        <div class="sb-right-section-header">Projects</div>
+        <div th:each="proj : ${resume.projects}" style="margin-bottom:1rem">
+            <div class="sb-entry-title" th:text="${proj.title}">Project</div>
+            <div class="sb-entry-sub" th:if="${!proj.techStack.isBlank()}" th:text="${proj.techStack}"></div>
+            <div class="sb-entry-desc" th:if="${!proj.summary.isBlank()}" th:text="${proj.summary}"></div>
+        </div>
+    </div>
+
+    <div th:if="${resume.experience.isEmpty() && resume.projects.isEmpty()}" class="sb-empty">
+        Add experience or projects to see them here.
+    </div>
+</div>
+
+</div>
+</body>
+</html>

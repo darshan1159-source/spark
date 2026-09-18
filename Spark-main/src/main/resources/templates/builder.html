@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Spark — Builder</title>
+    <meta name="description" content="Build your resume section by section with live preview and ATS scoring."/>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['"Bricolage Grotesque"', 'sans-serif'],
+                        body: ['Figtree', 'sans-serif'],
+                    },
+                    colors: {
+                        paper: '#FFFDF7',
+                        ink: '#16171B',
+                        coral: '#FF5D5D',
+                        coralDeep: '#E23F3F',
+                        cobalt: '#2F5BFF',
+                        cobaltDeep: '#1E3FCC',
+                        sun: '#FFC93C',
+                        mint: '#38C6A6',
+                        line: '#EDEAE0',
+                    },
+                },
+            },
+        };
+    </script>
+
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+    <script>
+        // Debug htmx events (bound to document since <body> doesn't exist yet at this point in <head>)
+        document.addEventListener('htmx:beforeRequest', function(evt) {
+            console.log('htmx request to:', evt.detail.target);
+        });
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            console.log('htmx response:', evt.detail.xhr.status);
+        });
+        document.addEventListener('htmx:responseError', function(evt) {
+            console.error('htmx error:', evt.detail.xhr.status, evt.detail.xhr.responseText);
+        });
+    </script>
+
+    <style>
+        :root{
+            --paper:#FFFDF7; --ink:#16171B; --coral:#FF5D5D; --coral-deep:#E23F3F;
+            --cobalt:#2F5BFF; --sun:#FFC93C; --mint:#38C6A6; --line:#EDEAE0;
+        }
+        html{scroll-behavior:smooth;}
+        body{background:var(--paper);}
+        a:focus-visible, button:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
+
+        /* Nav links — same liquid hover-fill pill used across every authenticated page */
+        .pill-item{
+            position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center;
+            height:38px; padding:0 20px; border-radius:9999px; border:2px solid var(--ink); background:transparent;
+            font-family:'Figtree',sans-serif; font-weight:700; font-size:14px; color:var(--ink); cursor:pointer;
+        }
+        .pill-item .pill-fill{
+            position:absolute; inset:0; background:var(--ink); border-radius:9999px; z-index:1; pointer-events:none;
+            transform:scaleY(0); transform-origin:bottom; transition:transform .3s cubic-bezier(.22,1,.36,1);
+        }
+        .pill-item:hover .pill-fill{ transform:scaleY(1); }
+        .pill-item .pill-item-label{ position:relative; z-index:2; transition:color .25s ease; }
+        .pill-item:hover .pill-item-label{ color:var(--paper); }
+
+        /* Form inputs */
+        .form-input {
+            display: block;
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            font-size: 0.875rem;
+            background: var(--paper);
+            border: 2px solid var(--line);
+            border-radius: 0.75rem;
+            outline: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Figtree', sans-serif;
+        }
+        .form-input:focus { 
+            border-color: var(--cobalt); 
+            box-shadow: 0 0 0 3px rgba(47, 91, 255, 0.1); 
+        }
+        .form-input::placeholder { color: var(--ink); opacity: 0.5; }
+
+        /* Section tabs — same pill vocabulary as .pill-item elsewhere in the app
+           (rounded-full, 2px ink border once active) instead of a one-off radius. */
+        .section-tab {
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--ink);
+            opacity: 0.6;
+            background: transparent;
+            border: 2px solid transparent;
+        }
+        .section-tab.active, .section-tab:hover {
+            opacity: 1;
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+        .section-content { display: none; }
+        .section-content.active { display: block; }
+
+        /* Template tabs — same pill vocabulary as .section-tab above. */
+        .tpl-tab {
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: transparent;
+            color: var(--ink);
+            opacity: 0.6;
+        }
+        .tpl-tab.active { 
+            background: var(--ink); 
+            color: var(--paper); 
+            border-color: var(--ink); 
+            opacity: 1;
+        }
+        .tpl-tab:not(.active):hover { 
+            border-color: var(--line); 
+            opacity: 1;
+        }
+
+        /* AI suggest button — pill radius + thin ink border, matching the border vocabulary
+           used by every other button-like control in the app (scaled down since this one
+           sits compactly inside a textarea corner). */
+        .ai-suggest-btn {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.25rem 0.6rem;
+            background: var(--coral);
+            color: var(--paper);
+            border-radius: 999px;
+            border: 1.5px solid var(--ink);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .ai-suggest-btn:hover { 
+            background: var(--coralDeep);
+            transform: scale(1.05); 
+        }
+
+        /* AI panel — width matches the always-visible ATS sidebar (18rem) exactly, so when it
+           slides in it lands flush over just that column and never touches the live preview
+           to its left. The sidebar itself stays put underneath — nothing is lost while the
+           panel briefly covers it, since its own "Improve ATS" tab shows the actionable
+           (needs-work) version of the same score anyway. */
+        #ai-panel {
+            position: fixed;
+            top: 0;
+            right: -18rem;
+            width: 18rem;
+            height: 100vh;
+            z-index: 200;
+            background: var(--paper);
+            box-shadow: -6px 0 32px rgba(22, 23, 27, 0.1);
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid var(--ink);
+        }
+        #ai-panel.open { right: 0; }
+
+        /* Floating AI button — bottom-right of the viewport by default, but on desktop the
+           ATS sidebar (18rem) always occupies that corner too, so it's pulled left by the
+           sidebar's width to land at the bottom-right of the PREVIEW column instead, clear
+           of the sidebar's own content underneath it. */
+        @media (min-width: 768px) {
+            #ai-float-btn {
+                right: calc(1.5rem + 18rem);
+            }
+        }
+
+        /* Ask AI / Improve ATS mode sections — same show/hide pattern as .section-content
+           in the left form panel, so only one mode's content occupies the panel at a time. */
+        .assistant-section { display: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+        .assistant-section.active { display: block; }
+
+        /* Preview pane fade on swap */
+        #preview-pane {
+            transition: opacity 0.3s ease;
+        }
+        .htmx-request #preview-pane {
+            opacity: 0.4;
+        }
+
+        /* Double-click-to-edit affordance in the live preview */
+        .jump-target {
+            cursor: pointer;
+            border-radius: 3px;
+            transition: background-color 0.15s ease;
+        }
+        .jump-target:hover {
+            background-color: rgba(47, 91, 255, 0.08);
+            outline: 1px dashed rgba(47, 91, 255, 0.45);
+            outline-offset: 2px;
+        }
+        @keyframes jumpHighlightFlash {
+            0%   { background-color: rgba(255, 201, 60, 0.55); }
+            100% { background-color: transparent; }
+        }
+        .jump-highlight {
+            animation: jumpHighlightFlash 1.1s ease-out;
+        }
+
+        /* Blocks index-shifting deletes while pending AI rewrite suggestions reference specific
+           entry indices (see the Improve ATS tab) — targets the hx-delete attribute directly,
+           no template changes needed. */
+        .ats-improve-active #education-list button[hx-delete],
+        .ats-improve-active #project-list button[hx-delete],
+        .ats-improve-active #experience-list button[hx-delete] {
+            pointer-events: none;
+            opacity: 0.35;
+        }
+
+        /* ATS score ring progress arc */
+        .ats-ring-progress {
+            transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--line);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--ink);
+            opacity: 0.3;
+        }
+
+        /* ===== Mobile ===== */
+
+        /* nav "more" menu — same pattern as the landing page nav */
+        .hamburger-btn{
+            width:38px; height:38px; border-radius:50%; background:var(--ink); border:none;
+            display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; padding:0;
+        }
+        .hamburger-line{ width:16px; height:2px; background:var(--paper); border-radius:1px; transition:transform .25s ease; }
+        .hamburger-btn[aria-expanded="true"] .hamburger-line:nth-child(1){ transform:translateY(3px) rotate(45deg); }
+        .hamburger-btn[aria-expanded="true"] .hamburger-line:nth-child(2){ transform:translateY(-3px) rotate(-45deg); }
+        .mobile-menu-popover{
+            position:absolute; top:calc(100% + .5rem); right:1rem; min-width:200px;
+            background:var(--ink); border-radius:1.25rem; box-shadow:0 12px 32px rgba(0,0,0,.18);
+            padding:.4rem; display:flex; flex-direction:column; gap:.25rem;
+            opacity:0; transform:translateY(-8px) scaleY(.96); transform-origin:top right; pointer-events:none;
+            transition:opacity .2s ease, transform .2s ease;
+        }
+        .mobile-menu-popover.open{ opacity:1; transform:none; pointer-events:auto; }
+        .mobile-menu-link{
+            display:block; padding:.75rem 1rem; border:none; background:transparent; color:var(--paper);
+            font-family:'Figtree',sans-serif; font-weight:600; font-size:.95rem; text-decoration:none; border-radius:.9rem; cursor:pointer;
+        }
+        .mobile-menu-link:hover{ background:rgba(255,255,255,.08); }
+
+        /* Edit / Preview segmented toggle */
+        .mobile-view-btn-active{ background:var(--ink); color:var(--paper); }
+
+        @media (max-width:767px){
+            /* the desktop layout keeps both panels visible at once; mobile shows one at a time,
+               switched by the Edit/Preview toggle above (data-mobile-view on <body>) */
+            body[data-mobile-view="edit"] #preview-side{ display:none; }
+            body[data-mobile-view="preview"] #form-panel{ display:none; }
+
+            /* the AI panel is a fixed drawer on desktop — too wide to slide in from an
+               off-screen offset on a phone, so it goes full width below the sm breakpoint */
+            #ai-panel{ width:100vw; right:-100vw; }
+        }
+    </style>
+    <script src="/js/app.js" defer></script>
+</head>
+<body class="font-body text-ink antialiased md:h-screen md:overflow-hidden">
+
+<!-- Top nav -->
+<nav class="h-16 border-b-2 border-ink bg-paper/90 backdrop-blur-md flex items-center px-4 md:px-6 gap-3 md:gap-4 shrink-0 sticky top-0 z-20 md:static relative">
+    <a href="/" class="flex items-center gap-2 shrink-0">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="#FF5D5D" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 1l2.4 7.4L22 11l-7.6 2.6L12 21l-2.4-7.4L2 11l7.6-2.6L12 1z"/>
+        </svg>
+        <span class="font-display font-extrabold text-xl hidden sm:inline">Spark</span>
+    </a>
+    <span class="text-ink/30 hidden md:inline">|</span>
+    <span class="text-sm text-ink/70 font-medium hidden md:inline">Builder</span>
+
+    <div class="ml-auto flex items-center gap-2 md:gap-3">
+        <a href="/dashboard" class="pill-item hidden md:inline-flex" style="height:34px; padding:0 16px; font-size:13px;">
+            <span class="pill-fill" aria-hidden="true"></span><span class="pill-item-label">My Resumes</span>
+        </a>
+        <a href="/review" class="pill-item hidden md:inline-flex" style="height:34px; padding:0 16px; font-size:13px;">
+            <span class="pill-fill" aria-hidden="true"></span><span class="pill-item-label">Preview full →</span>
+        </a>
+        <span id="save-indicator" class="hidden md:inline text-xs font-semibold text-ink/50 mr-1"></span>
+        <button id="btn-save" type="button" hx-post="/builder/save" hx-swap="none"
+                class="text-sm font-semibold text-ink px-3 md:px-4 py-2 rounded-full transition-all border-2 border-ink hover:bg-ink hover:text-paper">
+            Save
+        </button>
+        <form action="/export" method="post">
+            <button id="btn-export" type="submit"
+                    class="text-sm font-semibold bg-ink hover:bg-coral text-paper px-3 md:px-4 py-2 rounded-full transition-all flex items-center gap-2 border-2 border-ink">
+                <span class="hidden sm:inline">Export PDF ↓</span>
+                <span class="sm:hidden">↓</span>
+            </button>
+        </form>
+        <div th:replace="~{fragments/account-menu :: accountMenu}"></div>
+        <button id="builder-menu-btn" type="button" aria-label="More" aria-expanded="false" aria-controls="builder-menu-popover"
+                class="hamburger-btn md:hidden">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+        </button>
+    </div>
+
+    <div id="builder-menu-popover" class="mobile-menu-popover md:hidden" role="menu">
+        <a href="/dashboard" class="mobile-menu-link" role="menuitem">My Resumes</a>
+        <a href="/review" class="mobile-menu-link" role="menuitem">Preview full →</a>
+    </div>
+</nav>
+
+<!-- Flash error from a failed CV upload — parsing failed but the student was sent here anyway
+     so they can still fill the form in manually (see UploadController). Same banner style as
+     the equivalent one on choice.html. -->
+<div th:if="${uploadError}"
+     class="mx-4 md:mx-6 mt-4 p-4 border-2 border-ink rounded-xl font-medium text-sm flex items-center gap-3 shrink-0"
+     style="background:var(--coral); color:var(--paper);"
+     th:text="${uploadError}">
+    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+    </svg>
+</div>
+
+<!-- Mobile-only Edit / Preview toggle — the desktop three-column layout can't fit a phone
+     screen, so mobile switches between showing the form panel or the preview+ATS panel. -->
+<div class="md:hidden flex border-b-2 border-ink sticky top-16 z-10 bg-paper">
+    <button type="button" id="mobile-view-edit-btn" onclick="setMobileView('edit')"
+            class="mobile-view-btn flex-1 py-3 text-sm font-bold border-r-2 border-ink transition-colors">✏️ Edit</button>
+    <button type="button" id="mobile-view-preview-btn" onclick="setMobileView('preview')"
+            class="mobile-view-btn flex-1 py-3 text-sm font-bold transition-colors">👁️ Preview</button>
+</div>
+
+<!-- Main layout: form sidebar + preview pane -->
+<div class="flex flex-col md:flex-row md:h-[calc(100vh-3.5rem)] overflow-visible md:overflow-hidden" id="builder-main">
+
+    <!-- ===== LEFT: Form panel ===== -->
+    <div class="w-full md:w-[420px] shrink-0 flex flex-col md:border-r-2 border-ink bg-paper md:overflow-y-auto" id="form-panel">
+
+        <!-- Section nav tabs -->
+        <div class="px-5 pt-5 pb-3 border-b-2 border-line flex flex-wrap gap-1">
+            <button class="section-tab active" onclick="showSection('personal', this)" id="tab-personal">Personal</button>
+            <button class="section-tab" onclick="showSection('education', this)" id="tab-education">Education</button>
+            <button class="section-tab" onclick="showSection('projects', this)" id="tab-projects">Projects</button>
+            <button class="section-tab" onclick="showSection('experience', this)" id="tab-experience">Experience</button>
+            <button class="section-tab" onclick="showSection('skills', this)" id="tab-skills">Skills</button>
+        </div>
+
+        <!-- Personal Info -->
+        <div id="section-personal" class="section-content active px-5 py-6">
+            <h2 class="font-display font-bold text-sm text-ink mb-5 uppercase tracking-wider">Personal Info</h2>
+            <form hx-post="/builder/personal"
+                  hx-target="#preview-container"
+                  hx-swap="innerHTML"
+                  hx-trigger="keyup delay:300ms"
+                  class="space-y-4">
+                <input id="fullName" name="fullName" type="text"
+                       th:value="${resume.fullName}" placeholder="Full name"
+                       class="form-input"/>
+                <div class="grid grid-cols-2 gap-3">
+                    <input name="email" type="email"
+                           th:value="${resume.email}" placeholder="Email"
+                           class="form-input"/>
+                    <input name="phone" type="tel"
+                           th:value="${resume.phone}" placeholder="Phone"
+                           class="form-input"/>
+                </div>
+                <input name="linkedinUrl" type="url"
+                       th:value="${resume.linkedinUrl}" placeholder="LinkedIn URL (optional)"
+                       class="form-input"/>
+                <input name="githubUrl" type="url"
+                       th:value="${resume.githubUrl}" placeholder="GitHub URL (optional)"
+                       class="form-input"/>
+            </form>
+        </div>
+
+        <!-- Education -->
+        <div id="section-education" class="section-content px-5 py-6">
+            <h2 class="font-display font-bold text-sm text-ink mb-5 uppercase tracking-wider">Education</h2>
+            <div th:replace="~{fragments/education :: educationList}"></div>
+        </div>
+
+        <!-- Projects -->
+        <div id="section-projects" class="section-content px-5 py-6">
+            <h2 class="font-display font-bold text-sm text-ink mb-5 uppercase tracking-wider">Projects</h2>
+            <div th:replace="~{fragments/projects :: projectList}"></div>
+        </div>
+
+        <!-- Experience -->
+        <div id="section-experience" class="section-content px-5 py-6">
+            <h2 class="font-display font-bold text-sm text-ink mb-5 uppercase tracking-wider">Experience</h2>
+            <div th:replace="~{fragments/experience :: experienceList}"></div>
+        </div>
+
+        <!-- Skills -->
+        <div id="section-skills" class="section-content px-5 py-6">
+            <h2 class="font-display font-bold text-sm text-ink mb-5 uppercase tracking-wider">Skills</h2>
+            <p class="text-xs text-ink/70 font-medium mb-4">Enter skills separated by commas.</p>
+            <form hx-post="/builder/skills"
+                  hx-target="#preview-container"
+                  hx-swap="innerHTML"
+                  hx-trigger="keyup delay:300ms">
+                <textarea id="skillsInput" name="skillsInput" rows="4"
+                          th:text="${#strings.listJoin(resume.skills, ', ')}"
+                          placeholder="Java, Spring Boot, React, SQL, Git, Docker…"
+                          class="form-input w-full resize-none"></textarea>
+            </form>
+
+            <!-- Skill tag preview -->
+            <div class="mt-4">
+                <p id="skill-tags-empty" th:classappend="${resume.skills.isEmpty()} ? '' : 'hidden'"
+                   class="text-xs text-ink/50 font-medium italic">No skills yet — start typing above.</p>
+                <div class="flex flex-wrap gap-2" id="skill-tags">
+                    <span th:each="skill : ${resume.skills}"
+                          class="border-2 border-ink text-ink text-xs font-bold px-3 py-1.5 rounded-full"
+                          th:text="${skill}">skill</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== RIGHT: Preview + ATS sidebar ===== -->
+    <div class="flex-1 flex flex-col md:flex-row md:overflow-hidden" id="preview-side">
+
+        <!-- Preview area -->
+        <div class="flex-1 flex flex-col md:overflow-hidden" id="preview-area">
+            <!-- Template switcher -->
+            <div class="px-5 md:px-6 py-4 border-b-2 border-ink bg-paper flex items-center gap-2 md:gap-3 flex-wrap">
+                <span class="text-xs text-ink/70 font-bold">Layout:</span>
+
+                <form hx-post="/builder/template"
+                      hx-target="#preview-container"
+                      hx-swap="innerHTML"
+                      class="contents">
+                    <input type="hidden" name="template" value="ats"/>
+                    <button type="submit" id="tpl-ats"
+                            th:classappend="${resume.selectedTemplate == 'ats'} ? 'active' : ''"
+                            class="tpl-tab">ATS</button>
+                </form>
+
+                <form hx-post="/builder/template"
+                      hx-target="#preview-container"
+                      hx-swap="innerHTML"
+                      class="contents">
+                    <input type="hidden" name="template" value="editorial"/>
+                    <button type="submit" id="tpl-editorial"
+                            th:classappend="${resume.selectedTemplate == 'editorial'} ? 'active' : ''"
+                            class="tpl-tab">Editorial</button>
+                </form>
+
+                <form hx-post="/builder/template"
+                      hx-target="#preview-container"
+                      hx-swap="innerHTML"
+                      class="contents">
+                    <input type="hidden" name="template" value="sidebar"/>
+                    <button type="submit" id="tpl-sidebar"
+                            th:classappend="${resume.selectedTemplate == 'sidebar'} ? 'active' : ''"
+                            class="tpl-tab">Sidebar</button>
+                </form>
+
+                <span class="ml-auto text-xs text-ink/70 font-medium hidden md:inline">Updates live as you type</span>
+            </div>
+
+            <!-- Scrollable preview -->
+            <div class="flex-1 md:overflow-y-auto p-3 md:p-8" style="background:var(--line);">
+                <div class="bg-paper border-2 border-ink min-h-full overflow-hidden" id="preview-container" style="box-shadow:6px 6px 0 var(--ink);">
+                    <div class="bg-paper border-2 border-ink min-h-full overflow-hidden transition-opacity duration-300 ease-in-out" id="preview-pane" style="box-shadow:6px 6px 0 var(--ink);">
+                        <th:block th:if="${resume.selectedTemplate == 'ats'}">
+                            <div th:replace="~{resume-templates/ats :: body}"></div>
+                        </th:block>
+                        <th:block th:if="${resume.selectedTemplate == 'editorial'}">
+                            <div th:replace="~{resume-templates/editorial :: body}"></div>
+                        </th:block>
+                        <th:block th:if="${resume.selectedTemplate == 'sidebar'}">
+                            <div th:replace="~{resume-templates/sidebar :: body}"></div>
+                        </th:block>
+                        <!-- Fallback to ATS if no template is selected -->
+                        <th:block th:if="${resume.selectedTemplate == null or resume.selectedTemplate == ''}">
+                            <div th:replace="~{resume-templates/ats :: body}"></div>
+                        </th:block>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ATS score sidebar — always visible, same fragment/OOB-swap target every field
+             edit already refreshes (id="ats-badge"), regardless of whether the assistant
+             panel is open. -->
+        <div class="w-full md:w-72 shrink-0 border-t-2 md:border-t-0 md:border-l-2 border-ink bg-paper md:overflow-y-auto p-5">
+            <h3 class="font-display font-bold text-xs text-ink uppercase tracking-wider mb-4">ATS Score</h3>
+            <div id="ats-badge" th:replace="~{fragments/ats-badge :: atsBadge}"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== AI ASSISTANT PANEL ===== -->
+<div id="ai-panel">
+    <div class="flex items-center justify-between px-5 py-4 border-b-2 border-ink shrink-0">
+        <div>
+            <div class="font-display font-bold text-sm text-ink">AI Assistant</div>
+            <div id="ai-panel-context" class="text-xs text-ink/70 font-medium mt-0.5">Select a section to improve</div>
+        </div>
+        <button onclick="closeAiPanel()" class="text-ink/70 hover:text-ink text-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Mode switcher: "Ask AI" (free-form, per-field or whole-resume) vs "Improve ATS"
+         (only the checklist items still needing work, plus the batch AI-rewrite flow — the
+         full score + checklist stays in the always-visible sidebar, so this doesn't repeat it). -->
+    <div class="flex gap-2 px-5 py-3 border-b-2 border-line shrink-0">
+        <button type="button" id="assistant-tab-ask" class="tpl-tab flex-1" onclick="switchAssistantMode('ask')">Ask AI</button>
+        <button type="button" id="assistant-tab-improve" class="tpl-tab flex-1" onclick="switchAssistantMode('improve')">Improve ATS</button>
+    </div>
+
+    <!-- ===== Improve ATS: compact score readout (mirrors the sidebar, always current) +
+         only the checks that still need work + the batch scan-and-rewrite flow. ===== -->
+    <div id="assistant-section-improve" class="assistant-section">
+        <div class="px-5 py-5 border-b-2 border-line">
+            <div class="flex items-center gap-3">
+                <span id="ai-ats-score-pill"
+                      class="flex items-center justify-center w-12 h-12 rounded-full border-2 border-ink font-display font-bold text-sm shrink-0">–</span>
+                <div>
+                    <div class="font-display font-bold text-sm text-ink">ATS Score</div>
+                    <div id="ai-ats-status" class="text-xs font-bold"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-5 py-5 border-b-2 border-line">
+            <div class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-3">Needs improvement</div>
+            <div id="ai-ats-weak-list" class="space-y-3"></div>
+            <div id="ai-ats-all-good" class="hidden text-sm text-ink/70 font-medium text-center py-2">
+                Everything's checked off — nice work! 🎉
+            </div>
+        </div>
+
+        <div class="px-5 py-5">
+            <div class="flex items-center justify-between mb-3">
+                <div class="text-xs font-bold text-ink/70 uppercase tracking-wider">AI rewrite suggestions</div>
+                <button type="button" onclick="runAtsImprove()" class="text-xs font-bold text-cobalt hover:underline">Re-scan</button>
+            </div>
+            <div id="ats-improve-summary" class="hidden text-xs text-ink/60 font-medium mb-3"></div>
+
+            <div id="ats-improve-idle" class="text-center py-8">
+                <button type="button" onclick="runAtsImprove()"
+                        class="bg-ink hover:bg-coral text-paper text-sm font-bold py-2.5 px-5 rounded-full transition-all inline-flex items-center gap-2 border-2 border-ink">
+                    🎯 Scan for AI fixes
+                </button>
+            </div>
+            <div id="ats-improve-loading" class="hidden text-center py-8">
+                <div class="inline-block w-8 h-8 border-2 border-ink/20 border-t-mint rounded-full animate-spin mb-3"></div>
+                <div id="ats-improve-progress" class="text-sm text-ink/70 font-medium">Analyzing…</div>
+            </div>
+            <div id="ats-improve-empty" class="hidden text-center py-8 text-ink/70 text-sm font-medium">
+                Your resume already looks solid — no obvious ATS rewrites found right now.
+            </div>
+            <div id="ats-improve-list" class="hidden space-y-4"></div>
+            <div id="ats-improve-actions" class="hidden pt-4 flex gap-2">
+                <button onclick="acceptAtsImproveSelected(false)"
+                        class="flex-1 border-2 border-ink text-xs font-bold py-2 rounded-full hover:bg-ink hover:text-paper transition-colors">
+                    Accept Selected
+                </button>
+                <button onclick="acceptAtsImproveSelected(true)"
+                        class="flex-1 bg-mint text-ink text-xs font-bold py-2 rounded-full border-2 border-ink transition-colors">
+                    Accept All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Ask AI: free-form, per-field or whole-resume ===== -->
+    <div id="assistant-section-ask" class="assistant-section">
+        <!-- Target picker — always visible in this mode so the student can freely switch
+             between whole-resume advice and any specific entry. -->
+        <div id="ai-target-picker" class="px-5 py-4 border-b-2 border-line">
+            <div class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-3">Improve</div>
+            <select id="ai-target-select" onchange="onAiTargetChange()"
+                    class="form-input w-full text-sm"></select>
+        </div>
+
+        <!-- Shows exactly what's currently written there, so there's no need to close this
+             panel and go re-read the form field to remember what you're asking about. -->
+        <div id="ai-current-text-wrap" class="hidden px-5 py-4 border-b-2 border-line">
+            <div class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-2">Current text</div>
+            <div id="ai-current-text"
+                 class="text-sm text-ink/80 whitespace-pre-wrap border-2 border-line rounded-lg p-3 max-h-32 overflow-y-auto"></div>
+        </div>
+
+        <!-- Quick-action chips (change per section) -->
+        <div class="px-5 py-4 border-b-2 border-line">
+            <div class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-3">Quick actions</div>
+            <div id="ai-chips" class="flex flex-wrap gap-2">
+                <!-- Populated by JS based on active section -->
+            </div>
+        </div>
+
+        <!-- Free-text instruction -->
+        <div class="px-5 py-4 border-b-2 border-line">
+            <textarea id="ai-instruction" rows="2" placeholder="Or type your own instruction…"
+                      class="form-input w-full resize-none text-sm"></textarea>
+            <button id="ai-suggest-btn-main" onclick="runSuggest()"
+                    class="mt-3 w-full bg-ink hover:bg-coral text-paper text-sm font-bold py-2.5 rounded-full transition-all flex items-center justify-center gap-2 border-2 border-ink">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Generate suggestion
+            </button>
+        </div>
+
+        <!-- Suggestion output -->
+        <div class="px-5 py-4">
+            <div id="ai-suggestion-area" class="hidden">
+                <div class="text-xs font-bold text-ink/70 uppercase tracking-wider mb-2">Suggestion</div>
+                <div id="ai-suggestion-text"
+                     class="border-2 border-ink rounded-xl p-4 text-sm text-ink leading-relaxed whitespace-pre-wrap mb-4" style="background:var(--sun);"></div>
+                <!-- Field-rewrite mode: this suggestion can be written into a real field. -->
+                <div id="ai-accept-reject-actions" class="flex gap-3">
+                    <button id="ai-accept-btn" onclick="acceptSuggestion()"
+                            class="flex-1 bg-mint text-ink text-sm font-bold py-2 rounded-full transition-colors flex items-center justify-center gap-2 border-2 border-ink">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Accept
+                    </button>
+                    <button onclick="rejectSuggestion()"
+                            class="flex-1 border-2 border-ink hover:border-coral hover:text-coral text-sm font-bold py-2 rounded-full transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Reject
+                    </button>
+                </div>
+                <!-- Whole-resume advice mode: there's no single field to write this into. -->
+                <button id="ai-close-advice-btn" onclick="rejectSuggestion();"
+                        class="hidden w-full border-2 border-ink text-ink text-sm font-bold py-2 rounded-full transition-colors hover:border-coral hover:text-coral">
+                    Got it
+                </button>
+            </div>
+            <div id="ai-loading" class="hidden text-center py-8">
+                <div class="inline-block w-8 h-8 border-2 border-ink/20 border-t-coral rounded-full animate-spin mb-3"></div>
+                <div class="text-sm text-ink/70 font-medium">Generating suggestion…</div>
+            </div>
+            <div id="ai-empty" class="text-center py-8 text-ink/70 text-sm font-medium">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style="background:var(--sun);">
+                    <svg class="w-6 h-6 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                Pick a section, choose a quick action or type an instruction, then hit generate.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating AI Assistant button — the only floating action; Ask AI and Improve ATS both
+     live inside the one panel it opens. Position (right offset) is desktop-adjusted in CSS
+     above so it never sits on top of the always-visible ATS sidebar. -->
+<button id="ai-float-btn" onclick="openAiPanel(null)"
+        title="AI Assistant"
+        class="fixed bottom-6 right-6 z-[198] h-14 pl-4 pr-5 rounded-full text-paper text-sm font-bold
+               flex items-center gap-2 border-2 border-ink hover:scale-105 transition-transform duration-200"
+        style="background:var(--coral); box-shadow:7px 7px 0 var(--ink);">
+    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+    </svg>
+    <span class="hidden sm:inline whitespace-nowrap">AI Assistant</span>
+</button>
+
+<script>
+// ============================================================
+// Mobile: Edit / Preview toggle + nav "more" menu
+// ============================================================
+function setMobileView(view) {
+    document.body.dataset.mobileView = view;
+    document.getElementById('mobile-view-edit-btn').classList.toggle('mobile-view-btn-active', view === 'edit');
+    document.getElementById('mobile-view-preview-btn').classList.toggle('mobile-view-btn-active', view === 'preview');
+}
+setMobileView('edit');
+
+(function () {
+    const menuBtn = document.getElementById('builder-menu-btn');
+    const menuPopover = document.getElementById('builder-menu-popover');
+    if (!menuBtn || !menuPopover) return;
+    const closeMenu = () => {
+        menuBtn.setAttribute('aria-expanded', 'false');
+        menuPopover.classList.remove('open');
+    };
+    menuBtn.addEventListener('click', () => {
+        const open = menuBtn.getAttribute('aria-expanded') === 'true';
+        menuBtn.setAttribute('aria-expanded', String(!open));
+        menuPopover.classList.toggle('open', !open);
+    });
+    menuPopover.querySelectorAll('a').forEach((el) => el.addEventListener('click', closeMenu));
+    document.addEventListener('click', (e) => {
+        if (!menuPopover.contains(e.target) && e.target !== menuBtn && !menuBtn.contains(e.target)) closeMenu();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+})();
+
+// ============================================================
+// Section tab switching
+// ============================================================
+function showSection(id, btn) {
+    document.querySelectorAll('.section-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.section-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('section-' + id).classList.add('active');
+    btn.classList.add('active');
+    currentSection = id;
+    updateAiChips(id);
+}
+
+// ============================================================
+// Double-click in preview -> jump to the corresponding form field
+// ============================================================
+
+/** "projects" renders as "project-list", not "projects-list" — everything else is regular. */
+function jumpListIdForSection(section) {
+    return section === 'projects' ? 'project-list' : section + '-list';
+}
+
+function resolveJumpTarget(section, fieldName, fieldIndex) {
+    if (fieldIndex !== undefined && fieldIndex !== null && fieldIndex !== '') {
+        const entries = document.querySelectorAll('#' + jumpListIdForSection(section) + ' > div.border-2');
+        const entry = entries[parseInt(fieldIndex, 10)];
+        return entry ? entry.querySelector('[name="' + fieldName + '"]') : null;
+    }
+    const container = document.getElementById('section-' + section);
+    return container ? container.querySelector('[name="' + fieldName + '"]') : null;
+}
+
+document.addEventListener('dblclick', e => {
+    const target = e.target.closest('.jump-target');
+    if (!target) return;
+
+    const section = target.dataset.section;
+    const fieldName = target.dataset.fieldName;
+    const fieldIndex = target.dataset.fieldIndex;
+    if (!section || !fieldName) return;
+
+    const tabBtn = document.getElementById('tab-' + section);
+    if (tabBtn) showSection(section, tabBtn);
+    // On mobile the form panel is hidden while "Preview" is active — switch back to "Edit"
+    // so the field this jump is targeting is actually visible before we try to focus it.
+    if (window.innerWidth < 768) setMobileView('edit');
+
+    const field = resolveJumpTarget(section, fieldName, fieldIndex);
+    if (!field) return;
+
+    field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    field.focus();
+    field.classList.remove('jump-highlight');
+    // Force reflow so the animation restarts if the same field is jumped to twice in a row.
+    void field.offsetWidth;
+    field.classList.add('jump-highlight');
+    setTimeout(() => field.classList.remove('jump-highlight'), 1200);
+});
+
+// ============================================================
+// AI Panel
+// ============================================================
+let currentSection    = 'personal';
+let currentFieldEl    = null;
+let currentSuggestion = '';
+let aiMode            = 'field';   // 'field' — rewrite currentFieldEl | 'resume' — whole-resume advice
+let aiTargets         = [];        // populated when the panel opens with no fixed field
+
+const CHIPS = {
+    personal:   [],
+    education:  ['Summarize achievements', 'Tighten it up', 'Fix grammar', 'Add measurable results'],
+    projects:   ['Make it punchier', 'Add measurable impact', 'Fix grammar', 'Highlight key features'],
+    experience: ['Quantify achievements', 'Use stronger action verbs', 'Fix grammar', 'Make it more concise'],
+    skills:     [],
+    whole:      ["What's missing?", 'Overall impression?', 'Any red flags?', 'How can I improve this resume?'],
+};
+
+function updateAiChips(section) {
+    const container = document.getElementById('ai-chips');
+    container.innerHTML = '';
+    (CHIPS[section] || []).forEach(label => {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.className = 'text-xs font-bold px-3 py-1.5 rounded-full border-2 border-ink text-ink hover:border-coral hover:text-coral hover:bg-coral/10 transition-colors';
+        btn.onclick = () => {
+            document.getElementById('ai-instruction').value = label;
+            runSuggest();
+        };
+        container.appendChild(btn);
+    });
+}
+
+/**
+ * fieldEl set (opened from a per-field "✦ AI" button) -> Ask AI, pre-selected to that field.
+ * fieldEl null (opened from the floating button) -> Ask AI, whole-resume advice by default —
+ * the score itself is always visible in the sidebar already, so there's no need to default
+ * into the Improve ATS tab just to see it.
+ */
+function openAiPanel(fieldEl) {
+    document.getElementById('ai-panel').classList.add('open');
+    switchAssistantMode('ask', fieldEl || null);
+}
+
+function closeAiPanel() {
+    document.getElementById('ai-panel').classList.remove('open');
+    // Pending rewrite suggestions reference specific entry indices — clearing them on close
+    // (rather than leaving them cached) means reopening always starts from a fresh scan
+    // instead of risking stale indices if something was deleted while the panel was shut.
+    atsImproveResults = [];
+    document.body.classList.remove('ats-improve-active');
+    document.getElementById('ats-improve-list').classList.add('hidden');
+    document.getElementById('ats-improve-list').innerHTML = '';
+    document.getElementById('ats-improve-actions').classList.add('hidden');
+    document.getElementById('ats-improve-summary').classList.add('hidden');
+    document.getElementById('ats-improve-empty').classList.add('hidden');
+    document.getElementById('ats-improve-idle').classList.remove('hidden');
+}
+
+/** Switches between the panel's two modes. preselectEl (optional) pre-selects a specific
+ *  field's target when entering Ask AI mode via its per-field "✦ AI" button. */
+function switchAssistantMode(mode, preselectEl) {
+    document.getElementById('assistant-tab-ask').classList.toggle('active', mode === 'ask');
+    document.getElementById('assistant-tab-improve').classList.toggle('active', mode === 'improve');
+    document.getElementById('assistant-section-ask').classList.toggle('active', mode === 'ask');
+    document.getElementById('assistant-section-improve').classList.toggle('active', mode === 'improve');
+
+    if (mode === 'ask') {
+        populateAiTargets(preselectEl);
+        onAiTargetChange();
+    } else {
+        syncAtsSummaryIntoAssistant();
+    }
+}
+
+/** Mirrors the always-visible sidebar's current score + non-passing checklist items into the
+ *  Improve ATS tab — reads straight from that sidebar's live DOM (already kept current by the
+ *  existing hx-swap-oob on every field edit) rather than re-fetching or duplicating server
+ *  logic, so the two can never drift out of sync. */
+function syncAtsSummaryIntoAssistant() {
+    const scoreNumberEl = document.getElementById('ats-score-number');
+    const score = scoreNumberEl ? (parseInt(scoreNumberEl.textContent, 10) || 0) : 0;
+    const band = score >= 90 ? 'mint' : score >= 70 ? 'sun' : 'coral';
+
+    const pill = document.getElementById('ai-ats-score-pill');
+    if (pill) {
+        pill.textContent = score;
+        pill.style.background = `var(--${band})`;
+        pill.style.color = band === 'coral' ? 'var(--paper)' : 'var(--ink)';
+    }
+    const statusEl = document.getElementById('ai-ats-status');
+    if (statusEl) {
+        statusEl.textContent = score >= 90 ? "Great — you're ATS-ready ✓"
+            : score >= 70 ? 'Getting there — a few fixes left'
+            : 'Needs work — see below';
+        statusEl.className = 'text-xs font-bold text-' + band;
+    }
+
+    const weakList = document.getElementById('ai-ats-weak-list');
+    const allGood = document.getElementById('ai-ats-all-good');
+    weakList.innerHTML = '';
+    const weakItems = Array.from(document.querySelectorAll('#ats-checklist > [data-status]'))
+        .filter(item => item.dataset.status !== 'pass');
+    if (weakItems.length === 0) {
+        weakList.classList.add('hidden');
+        allGood.classList.remove('hidden');
+    } else {
+        allGood.classList.add('hidden');
+        weakList.classList.remove('hidden');
+        weakItems.forEach(item => weakList.appendChild(item.cloneNode(true)));
+    }
+}
+
+/** Capitalizes the first letter, e.g. "projects" -> "Projects". */
+function capitalize(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+/**
+ * Builds the target dropdown from every field that already has a per-field "✦ AI" button —
+ * reusing the same targets that already work correctly, rather than guessing one from context.
+ * Rebuilt every time Ask AI mode is entered so a newly-added entry always shows up.
+ */
+function populateAiTargets(preselectEl) {
+    aiTargets = [];
+    document.querySelectorAll('.ai-suggest-btn').forEach(btn => {
+        const textarea = btn.closest('.relative')?.querySelector('textarea');
+        if (!textarea) return;
+        const section = btn.dataset.section;
+        const index = parseInt(btn.dataset.fieldIndex, 10);
+        aiTargets.push({ label: capitalize(section) + ' #' + (index + 1), section, el: textarea });
+    });
+
+    const select = document.getElementById('ai-target-select');
+    select.innerHTML = '';
+    const wholeOpt = document.createElement('option');
+    wholeOpt.value = 'whole';
+    wholeOpt.textContent = 'Whole resume (advice only)';
+    select.appendChild(wholeOpt);
+    aiTargets.forEach((t, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = t.label;
+        select.appendChild(opt);
+    });
+
+    if (preselectEl) {
+        const idx = aiTargets.findIndex(t => t.el === preselectEl);
+        select.value = idx >= 0 ? String(idx) : 'whole';
+    }
+}
+
+function onAiTargetChange() {
+    const value = document.getElementById('ai-target-select').value;
+    if (value === 'whole') {
+        aiMode = 'resume';
+        currentFieldEl = null;
+        document.getElementById('ai-panel-context').textContent = 'Whole resume — advice only';
+        updateAiChips('whole');
+    } else {
+        const target = aiTargets[parseInt(value, 10)];
+        aiMode = 'field';
+        currentFieldEl = target.el;
+        document.getElementById('ai-panel-context').textContent = target.label;
+        updateAiChips(target.section);
+    }
+    rejectSuggestion();
+    updateCurrentTextDisplay();
+}
+
+/** Shows exactly what's currently written in the selected target — the actual live form
+ *  value, not a stale snapshot — so there's no need to close this panel to go check. */
+function updateCurrentTextDisplay() {
+    const wrap = document.getElementById('ai-current-text-wrap');
+    const box = document.getElementById('ai-current-text');
+    if (!wrap || !box) return;
+    const text = aiMode === 'resume' ? buildWholeResumeContext() : (currentFieldEl ? currentFieldEl.value : '');
+    box.textContent = text.trim() ? text : '(nothing written here yet)';
+    wrap.classList.remove('hidden');
+}
+
+/** Reads the live, in-progress form values (not the last-saved server state) into one context blob. */
+function buildWholeResumeContext() {
+    const val = id => document.getElementById(id)?.value || '';
+    const lines = [];
+
+    if (val('fullName')) lines.push('Name: ' + val('fullName'));
+
+    document.querySelectorAll('#education-list > div.border-2').forEach((entry, i) => {
+        const inst = entry.querySelector('input[name=institution]')?.value || '';
+        const degree = entry.querySelector('input[name=degree]')?.value || '';
+        const desc = entry.querySelector('textarea[name=description]')?.value || '';
+        if (inst || degree || desc) {
+            lines.push(`Education ${i + 1}: ${inst} — ${degree}` + (desc ? `\n${desc}` : ''));
+        }
+    });
+
+    document.querySelectorAll('#project-list > div.border-2').forEach((entry, i) => {
+        const title = entry.querySelector('input[name=title]')?.value || '';
+        const tech = entry.querySelector('input[name=techStack]')?.value || '';
+        const summary = entry.querySelector('textarea[name=summary]')?.value || '';
+        if (title || summary) {
+            lines.push(`Project ${i + 1}: ${title} (${tech})` + (summary ? `\n${summary}` : ''));
+        }
+    });
+
+    document.querySelectorAll('#experience-list > div.border-2').forEach((entry, i) => {
+        const title = entry.querySelector('input[name=title]')?.value || '';
+        const company = entry.querySelector('input[name=company]')?.value || '';
+        const desc = entry.querySelector('textarea[name=description]')?.value || '';
+        if (title || desc) {
+            lines.push(`Experience ${i + 1}: ${title} at ${company}` + (desc ? `\n${desc}` : ''));
+        }
+    });
+
+    if (val('skillsInput')) lines.push('Skills: ' + val('skillsInput'));
+
+    return lines.join('\n\n');
+}
+
+async function runSuggest() {
+    const instruction = document.getElementById('ai-instruction').value.trim();
+    if (!instruction) { alert('Please enter an instruction or choose a quick action.'); return; }
+
+    let sectionText;
+    let scope = 'field';
+    if (aiMode === 'resume') {
+        sectionText = buildWholeResumeContext();
+        scope = 'resume';
+    } else if (currentFieldEl) {
+        sectionText = currentFieldEl.value;
+    } else {
+        // Defensive fallback — shouldn't normally be reached now that the target picker
+        // always resolves aiMode/currentFieldEl explicitly before this runs.
+        const active = document.getElementById('section-' + currentSection);
+        sectionText = active
+            ? Array.from(active.querySelectorAll('textarea, input[type=text]')).map(el => el.value).filter(Boolean).join('\n')
+            : '';
+    }
+
+    document.getElementById('ai-empty').classList.add('hidden');
+    document.getElementById('ai-suggestion-area').classList.add('hidden');
+    document.getElementById('ai-loading').classList.remove('hidden');
+
+    try {
+        const params = new URLSearchParams({ sectionText, instruction, scope });
+        const res = await fetch('/api/assistant/suggest', { method: 'POST', body: params });
+        const data = await res.json();
+
+        document.getElementById('ai-loading').classList.add('hidden');
+
+        if (data.suggestion) {
+            currentSuggestion = data.suggestion;
+            document.getElementById('ai-suggestion-text').textContent = data.suggestion;
+            document.getElementById('ai-suggestion-area').classList.remove('hidden');
+            const isAdvice = aiMode === 'resume';
+            document.getElementById('ai-accept-reject-actions').classList.toggle('hidden', isAdvice);
+            document.getElementById('ai-close-advice-btn').classList.toggle('hidden', !isAdvice);
+        } else {
+            alert(data.error || 'Could not generate a suggestion. Is Ollama running?');
+            document.getElementById('ai-empty').classList.remove('hidden');
+        }
+    } catch (e) {
+        document.getElementById('ai-loading').classList.add('hidden');
+        document.getElementById('ai-empty').classList.remove('hidden');
+        alert('AI assistant is unavailable. Make sure Ollama is running on localhost:11434.');
+    }
+}
+
+function acceptSuggestion() {
+    if (!currentSuggestion || !currentFieldEl) return;
+    currentFieldEl.value = currentSuggestion;
+    // hx-trigger on these fields listens for "keyup", not "change" — dispatching the wrong
+    // event meant an accepted suggestion updated the textarea visually but never synced to
+    // the server, live preview, or ATS score until the student typed into it again.
+    currentFieldEl.dispatchEvent(new Event('keyup', { bubbles: true }));
+    // Stay open rather than closing — keeps the panel usable for the next field without
+    // having to reopen and re-pick a target every time.
+    rejectSuggestion();
+    updateCurrentTextDisplay();
+}
+
+function rejectSuggestion() {
+    currentSuggestion = '';
+    document.getElementById('ai-suggestion-area').classList.add('hidden');
+    document.getElementById('ai-empty').classList.remove('hidden');
+    document.getElementById('ai-instruction').value = '';
+}
+
+// ============================================================
+// ATS Improve (review-queue-then-apply batch rewrite)
+// ============================================================
+let atsImproveResults = []; // [{ target, after, ok }]  ok: true|false|null(retrying)
+
+/** Scans the resume for weak spots and fetches an AI rewrite for each — runs whenever
+ *  Quick Fixes is opened via the floating button, or on demand via "Re-scan"/"Scan for AI
+ *  fixes". Renders straight into the Quick Fixes section of #ai-panel. */
+async function runAtsImprove() {
+    document.getElementById('ats-improve-idle').classList.add('hidden');
+    document.getElementById('ats-improve-empty').classList.add('hidden');
+    document.getElementById('ats-improve-summary').classList.add('hidden');
+    document.getElementById('ats-improve-list').classList.add('hidden');
+    document.getElementById('ats-improve-list').innerHTML = '';
+    document.getElementById('ats-improve-actions').classList.add('hidden');
+    document.getElementById('ats-improve-loading').classList.remove('hidden');
+    document.getElementById('ats-improve-progress').textContent = 'Scanning your resume…';
+
+    let targets;
+    try {
+        const res = await fetch('/api/assistant/ats-improve/targets');
+        const data = await res.json();
+        targets = data.targets || [];
+    } catch (e) {
+        document.getElementById('ats-improve-loading').classList.add('hidden');
+        document.getElementById('ats-improve-idle').classList.remove('hidden');
+        alert('Could not analyze the resume. Please try again.');
+        return;
+    }
+
+    if (targets.length === 0) {
+        document.getElementById('ats-improve-loading').classList.add('hidden');
+        document.getElementById('ats-improve-empty').classList.remove('hidden');
+        atsImproveResults = [];
+        document.body.classList.remove('ats-improve-active');
+        return;
+    }
+
+    atsImproveResults = targets.map(t => ({ target: t, after: null, ok: null }));
+    document.body.classList.add('ats-improve-active');
+
+    // Skills target needs no AI call — only the ones with an instruction do.
+    const aiItems = atsImproveResults.filter(r => r.target.instruction);
+    for (let i = 0; i < aiItems.length; i++) {
+        document.getElementById('ats-improve-progress').textContent =
+            `Analyzing ${i + 1} of ${aiItems.length}…`;
+        await fetchSuggestionInto(aiItems[i]);
+    }
+
+    document.getElementById('ats-improve-loading').classList.add('hidden');
+    renderAtsImproveList();
+}
+
+/** One sequential /api/assistant/suggest call for a single target; never throws — sets item.ok instead. */
+async function fetchSuggestionInto(item) {
+    try {
+        const params = new URLSearchParams({
+            sectionText: item.target.currentText,
+            instruction: item.target.instruction,
+            scope: 'field'
+        });
+        const res = await fetch('/api/assistant/suggest', { method: 'POST', body: params });
+        const data = await res.json();
+        item.ok = !!data.suggestion;
+        item.after = data.suggestion || null;
+    } catch (e) {
+        item.ok = false;
+    }
+}
+
+/** Re-fetches one failed item without disturbing any other card's checkbox state. */
+async function retryAtsImproveItem(idx) {
+    const item = atsImproveResults[idx];
+    if (!item || !item.target.instruction) return;
+    item.ok = null;
+    updateAtsImproveCard(idx);
+    await fetchSuggestionInto(item);
+    updateAtsImproveCard(idx);
+}
+
+function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s == null ? '' : s;
+    return div.innerHTML;
+}
+
+function atsImproveCardBody(item) {
+    const t = item.target;
+    if (t.suggestedAdditions) {
+        return '<div class="flex flex-wrap gap-2 mt-1">' +
+            t.suggestedAdditions.map(s =>
+                `<span class="border-2 border-ink text-ink text-xs font-bold px-3 py-1.5 rounded-full" style="background:var(--mint);">+ ${escapeHtml(s)}</span>`
+            ).join('') + '</div>';
+    }
+    if (item.ok === false) {
+        const idx = atsImproveResults.indexOf(item);
+        return `<div class="text-xs text-coral font-bold">Couldn't generate a suggestion for this.
+                <button type="button" class="underline" onclick="retryAtsImproveItem(${idx})">Retry</button></div>`;
+    }
+    if (item.ok === null) {
+        return '<div class="text-xs text-ink/50">Retrying…</div>';
+    }
+    return `<div class="text-xs text-ink/50 font-bold uppercase mb-1">Before</div>
+            <div class="text-sm text-ink/70 whitespace-pre-wrap border-2 border-line rounded-lg p-2 mb-2">${escapeHtml(t.currentText)}</div>
+            <div class="text-xs text-ink/50 font-bold uppercase mb-1">After</div>
+            <div class="text-sm text-ink whitespace-pre-wrap border-2 border-ink rounded-lg p-2" style="background:var(--sun);">${escapeHtml(item.after)}</div>`;
+}
+
+function atsImproveCardHtml(item, idx) {
+    const disabled = (item.ok === false || item.ok === null);
+    return `
+        <label class="flex items-start gap-3 ${disabled ? '' : 'cursor-pointer'}">
+            <input type="checkbox" class="ats-improve-check mt-1" data-idx="${idx}"
+                   ${disabled ? 'disabled' : 'checked'}/>
+            <div class="flex-1">
+                <div class="font-display font-bold text-xs text-ink uppercase tracking-wider mb-2">${escapeHtml(item.target.label)}</div>
+                ${atsImproveCardBody(item)}
+            </div>
+        </label>`;
+}
+
+/** Rebuilds only one card in place — preserves every other card's checkbox state. */
+function updateAtsImproveCard(idx) {
+    const card = document.querySelector(`#ats-improve-list [data-card-idx="${idx}"]`);
+    if (card) card.innerHTML = atsImproveCardHtml(atsImproveResults[idx], idx);
+}
+
+function renderAtsImproveList() {
+    const list = document.getElementById('ats-improve-list');
+    list.innerHTML = '';
+    atsImproveResults.forEach((item, i) => {
+        const card = document.createElement('div');
+        card.className = 'border-2 border-ink rounded-xl p-4';
+        card.style.background = 'var(--paper)';
+        card.style.boxShadow = '4px 4px 0 var(--ink)';
+        card.dataset.cardIdx = String(i);
+        card.innerHTML = atsImproveCardHtml(item, i);
+        list.appendChild(card);
+    });
+    list.classList.remove('hidden');
+    document.getElementById('ats-improve-actions').classList.remove('hidden');
+    const summary = document.getElementById('ats-improve-summary');
+    summary.textContent = atsImproveResults.length + ' suggested improvement' + (atsImproveResults.length === 1 ? '' : 's');
+    summary.classList.remove('hidden');
+}
+
+/**
+ * Writes accepted rewrites back into the live form fields via resolveJumpTarget(), then
+ * dispatches the same synthetic "keyup" acceptSuggestion() already relies on, so the existing
+ * htmx sync/preview/ATS-score pipeline picks it up for free.
+ */
+function acceptAtsImproveSelected(forceAll) {
+    let applied = 0, skipped = 0;
+
+    atsImproveResults.forEach((item, i) => {
+        const checkbox = document.querySelector(`.ats-improve-check[data-idx="${i}"]`);
+        const isChecked = forceAll ? (item.ok !== false && item.ok !== null) : (checkbox && checkbox.checked);
+        if (!isChecked) return;
+
+        const t = item.target;
+
+        if (t.suggestedAdditions) {
+            const skillsField = resolveJumpTarget('skills', 'skillsInput', null);
+            if (!skillsField) { skipped++; return; }
+            const existing = skillsField.value.split(',').map(s => s.trim()).filter(Boolean);
+            const existingLower = new Set(existing.map(s => s.toLowerCase()));
+            const toAdd = t.suggestedAdditions.filter(s => !existingLower.has(s.toLowerCase()));
+            skillsField.value = existing.concat(toAdd).join(', ');
+            skillsField.dispatchEvent(new Event('keyup', { bubbles: true }));
+            applied++;
+            return;
+        }
+
+        const field = resolveJumpTarget(t.section, t.fieldName, t.fieldIndex);
+        if (!field) { skipped++; return; }
+        // Defense-in-depth: Remove buttons are disabled while this modal is open, but the
+        // student could still be typing in the SAME field in the background. If its live
+        // value has drifted from what we analyzed, skip rather than clobber their newer edit.
+        if (field.value !== t.currentText) { skipped++; return; }
+
+        field.value = item.after;
+        field.dispatchEvent(new Event('keyup', { bubbles: true }));
+        applied++;
+    });
+
+    // Back to idle rather than closing the panel — the score above has already updated via
+    // the same OOB swap every field edit triggers, so it's right there to glance at next.
+    atsImproveResults = [];
+    document.body.classList.remove('ats-improve-active');
+    document.getElementById('ats-improve-list').classList.add('hidden');
+    document.getElementById('ats-improve-list').innerHTML = '';
+    document.getElementById('ats-improve-actions').classList.add('hidden');
+    document.getElementById('ats-improve-summary').classList.add('hidden');
+    document.getElementById('ats-improve-idle').classList.remove('hidden');
+
+    if (skipped > 0) {
+        alert(`Applied ${applied} change(s). Skipped ${skipped} because the resume changed while this was open.`);
+    }
+}
+
+// Wire up inline AI suggest buttons
+document.addEventListener('click', e => {
+    if (e.target.classList.contains('ai-suggest-btn')) {
+        const textarea = e.target.closest('.relative')?.querySelector('textarea');
+        currentFieldEl = textarea || null;
+        openAiPanel(currentFieldEl);
+    }
+});
+
+// Init chips
+updateAiChips('personal');
+
+// ============================================================
+// Autosave — change-triggered (debounced) + a periodic backstop, plus an
+// unsaved-changes warning on tab close.
+//
+// Every field edit already syncs into the session via its own htmx request with a
+// 300ms debounce (hx-trigger="keyup delay:300ms") — that's what actually updates
+// ResumeData. This layer only decides WHEN to additionally persist that session
+// state to the database. The debounce below (4s) is deliberately much longer than
+// htmx's 300ms field-sync delay, so by the time autosave fires the last keystroke
+// has already landed in the session — an autosave racing ahead of the field-sync
+// request is exactly what would persist a state missing the last few characters.
+// ============================================================
+(function () {
+    const saveBtn = document.getElementById('btn-save');
+    const indicator = document.getElementById('save-indicator');
+    if (!saveBtn) return;
+
+    const DEBOUNCE_MS = 4000;
+    const BACKSTOP_MS = 45000;
+
+    let dirty = false;
+    let debounceTimer = null;
+
+    function setIndicator(state) {
+        if (!indicator) return;
+        indicator.textContent = {
+            dirty: 'Unsaved changes', saving: 'Saving…', saved: 'Saved ✓',
+            // 409 from /builder/save means Resume.version didn't match — this resume was saved
+            // from another device since this session last loaded it (see BuilderController.save).
+            conflict: '⚠ Edited elsewhere — reload to see it',
+        }[state] || '';
+    }
+
+    function isFieldMutation(elt) {
+        if (!elt) return false;
+        const url = elt.getAttribute('hx-post') || elt.getAttribute('hx-delete') || '';
+        return url.startsWith('/builder/') && url !== '/builder/save' && url !== '/builder/preview';
+    }
+
+    function markDirty() {
+        dirty = true;
+        setIndicator('dirty');
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(doSave, DEBOUNCE_MS);
+    }
+
+    function doSave() {
+        if (!dirty) return;
+        setIndicator('saving');
+        fetch('/builder/save', { method: 'POST' })
+            .then((res) => {
+                if (res.ok) { dirty = false; setIndicator('saved'); }
+                else if (res.status === 409) { setIndicator('conflict'); }
+                else { setIndicator('dirty'); }
+            })
+            .catch(() => setIndicator('dirty'));
+    }
+
+    document.body.addEventListener('htmx:afterRequest', (evt) => {
+        const elt = evt.detail.elt;
+        if (elt && elt.id === 'btn-save') {
+            if (evt.detail.successful) { dirty = false; setIndicator('saved'); }
+            else if (evt.detail.xhr && evt.detail.xhr.status === 409) { setIndicator('conflict'); }
+            else { setIndicator('dirty'); }
+            return;
+        }
+        if (evt.detail.successful && isFieldMutation(elt)) {
+            markDirty();
+            // Field edits OOB-swap the sidebar's score/checklist for free — if the Improve ATS
+            // tab happens to already be open, keep it showing the same live numbers instead of
+            // only refreshing the next time the tab is switched to.
+            const improveTab = document.getElementById('assistant-tab-improve');
+            if (improveTab && improveTab.classList.contains('active')) {
+                syncAtsSummaryIntoAssistant();
+            }
+        }
+    });
+
+    setInterval(() => { if (dirty) doSave(); }, BACKSTOP_MS);
+
+    window.addEventListener('beforeunload', (e) => {
+        if (!dirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+})();
+</script>
+</body>
+</html>

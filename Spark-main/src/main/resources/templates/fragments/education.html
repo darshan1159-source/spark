@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Education list fragment: "fragments/education :: educationList" -->
+<div th:fragment="educationList" id="education-list" class="space-y-4">
+    <div th:if="${resume.education.isEmpty()}" class="text-center py-8 px-2">
+        <div class="w-11 h-11 rounded-full flex items-center justify-center mx-auto mb-3 border-2 border-ink" style="background:var(--sun);">
+            <svg class="w-5 h-5" fill="none" stroke="var(--ink)" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+            </svg>
+        </div>
+        <p class="text-sm font-bold text-ink mb-1">No education added yet</p>
+        <p class="text-xs text-ink/60 font-medium">Add your school, degree, and dates below.</p>
+    </div>
+    <div th:each="edu, idx : ${resume.education}"
+         class="border-2 border-ink rounded-xl p-4 space-y-3" style="background:var(--paper); box-shadow:4px 4px 0 var(--ink);">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-ink/70 uppercase tracking-wider">Entry #<span th:text="${idx.index + 1}">1</span></span>
+            <button type="button"
+                    th:attr="hx-delete=${'/builder/education/' + edu.id}"
+                    hx-target="#education-list"
+                    hx-swap="outerHTML"
+                    class="text-coral hover:text-coralDeep text-xs font-bold transition-colors flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                Remove
+            </button>
+        </div>
+        <form th:attr="hx-post=${'/builder/education/' + edu.id}"
+              hx-target="#preview-container"
+              hx-swap="innerHTML"
+              hx-trigger="keyup delay:300ms"
+              class="grid grid-cols-2 gap-3">
+            <input name="institution" th:value="${edu.institution}" placeholder="Institution"
+                   class="col-span-2 form-input"/>
+            <input name="degree" th:value="${edu.degree}" placeholder="Degree / Field of study"
+                   class="form-input"/>
+            <input name="dates" th:value="${edu.dates}" placeholder="Dates (e.g. 2020–2024)"
+                   class="form-input"/>
+            <div class="col-span-2 relative">
+                <textarea name="description" th:text="${edu.description}" rows="3"
+                          placeholder="Describe achievements, GPA, relevant coursework…"
+                          class="form-input w-full resize-none"></textarea>
+                <button type="button"
+                        class="ai-suggest-btn absolute bottom-2 right-2"
+                        data-field-name="description"
+                        th:data-field-index="${idx.index}"
+                        data-section="education"
+                        title="Improve with AI">✦ AI</button>
+            </div>
+        </form>
+    </div>
+
+    <button type="button"
+            hx-post="/builder/education/add"
+            hx-target="#education-list"
+            hx-swap="outerHTML"
+            class="w-full py-3 border-2 border-dashed border-ink rounded-xl text-ink/70 hover:border-coral hover:text-coral hover:bg-coral/10 text-sm font-bold transition-all flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Add education entry
+    </button>
+</div>
+
+<!-- Add/delete responses swap the list AND refresh the preview + ATS score out of band -->
+<th:block th:fragment="educationListWithPreview">
+    <div th:replace="~{::educationList}"></div>
+    <div hx-swap-oob="innerHTML:#preview-container">
+        <div th:replace="~{fragments/preview :: previewAndBadge}"></div>
+    </div>
+</th:block>
+
+</body>
+</html>
